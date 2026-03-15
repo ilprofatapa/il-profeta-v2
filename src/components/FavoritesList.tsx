@@ -7,6 +7,17 @@ import type { PartitaLive, PartitaDisponibile } from '../services/sheetsService'
 import { getPartiteLive, aggiungiPartita, rimuoviPartita } from '../services/sheetsService';
 import LiveMonitor from './LiveMonitor';
 
+const LEGHE_PREFERITE: { id: string; nome: string }[] = [
+    { id: '2', nome: '🏆 Champions League' },
+    { id: '39', nome: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League' },
+    { id: '135', nome: '🇮🇹 Serie A' },
+    { id: '140', nome: '🇪🇸 La Liga' },
+    { id: '78', nome: '🇩🇪 Bundesliga' },
+    { id: '61', nome: '🇫🇷 Ligue 1' },
+    { id: '88', nome: '🇳🇱 Eredivisie' },
+    { id: '94', nome: '🇵🇹 Primeira Liga' },
+];
+
 interface FavoritesListProps {
     partite: PartitaLive[];
     onRefresh: () => void;
@@ -26,6 +37,20 @@ const FavoritesList = ({ partite, onRefresh }: FavoritesListProps) => {
             setRisultati(attive);
         } catch (e) {
             console.error('Errore ricerca partite:', e);
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const cercaPartitePerLega = async (leagueId: string) => {
+        setSearching(true);
+        try {
+            const response = await fetch(`/api/proxy?action=getPerLega&leagueId=${leagueId}`);
+            const data = await response.json();
+            setRisultati(data);
+            setShowSearch(true);
+        } catch (e) {
+            console.error('Errore ricerca per lega:', e);
         } finally {
             setSearching(false);
         }
@@ -70,12 +95,31 @@ const FavoritesList = ({ partite, onRefresh }: FavoritesListProps) => {
         <div className="space-y-4">
 
             {partite.length < 4 && (
-                <button
-                    onClick={() => { setShowSearch(!showSearch); if (!showSearch) cercaPartite(); }}
-                    className="w-full py-3 rounded-2xl border border-dashed border-yellow-500/30 text-yellow-400 text-xs font-black uppercase tracking-widest hover:bg-yellow-500/10 transition-all"
-                >
-                    {showSearch ? '✕ Chiudi ricerca' : '＋ Aggiungi Partita'}
-                </button>
+                <div className="space-y-2">
+                    {/* Bottoni leghe preferite */}
+                    <div className="grid grid-cols-4 gap-1">
+                        {LEGHE_PREFERITE.map(lega => (
+                            <button
+                                key={lega.id}
+                                onClick={() => {
+                                    setShowSearch(true);
+                                    setFiltroLega(lega.id);
+                                    cercaPartitePerLega(lega.id);
+                                }}
+                                className="py-1.5 px-1 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 text-[9px] font-bold hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-yellow-400 transition-all text-center"
+                            >
+                                {lega.nome}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Bottone tutte le partite */}
+                    <button
+                        onClick={() => { setShowSearch(!showSearch); if (!showSearch) cercaPartite(); }}
+                        className="w-full py-2 rounded-2xl border border-dashed border-yellow-500/30 text-yellow-400 text-xs font-black uppercase tracking-widest hover:bg-yellow-500/10 transition-all"
+                    >
+                        {showSearch ? '✕ Chiudi ricerca' : '🔍 Tutte le partite live'}
+                    </button>
+                </div>
             )}
 
             {showSearch && (
