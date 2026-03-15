@@ -8,30 +8,6 @@ import { useState } from 'react';
 import type { PartitaLive } from '../services/sheetsService';
 import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
 
-// ── SparkLine SVG ─────────────────────────────────────────────
-const SparkLine = ({ data, color }: { data: number[], color: string }) => {
-    if (!data || data.length < 2) return null;
-    const max = Math.max(...data, 0.01);
-    const min = Math.min(...data);
-    const range = max - min || 0.01;
-    const points = data.map((v, i) => {
-        const x = (i / (data.length - 1)) * 100;
-        const y = 100 - ((v - min) / range) * 100;
-        return `${x},${y}`;
-    }).join(' ');
-    return (
-        <svg viewBox="0 0 100 100" className="w-full h-6" preserveAspectRatio="none">
-            <polyline points={points} fill="none" stroke={color} strokeWidth="3" vectorEffect="non-scaling-stroke" />
-        </svg>
-    );
-};
-
-const getSparkColor = (trend: number): string => {
-    if (trend >= 0.15) return '#f97316';
-    if (trend >= 0.05) return '#eab308';
-    if (trend < 0) return '#60a5fa';
-    return '#6b7280';
-};
 
 // ── Semaforo ──────────────────────────────────────────────────
 const SemaforoSignal = ({
@@ -58,8 +34,8 @@ const SemaforoSignal = ({
             </div>
             {livello > 0 && (
                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border ${showEsci
-                        ? 'bg-red-500/15 border-red-500/40'
-                        : 'bg-emerald-500/10 border-emerald-500/30'
+                    ? 'bg-red-500/15 border-red-500/40'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
                     }`}>
                     <span className="text-[9px]">{showEsci ? '🔴' : '🟢'}</span>
                     <span className={`text-[8px] font-black uppercase tracking-widest ${showEsci ? 'text-red-400 animate-pulse' : 'text-emerald-400'
@@ -134,8 +110,8 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isLive ? 'bg-red-500/20 text-red-400 animate-pulse' :
-                            isFT ? 'bg-gray-700/60 text-gray-400' :
-                                'bg-gray-800 text-gray-500'
+                        isFT ? 'bg-gray-700/60 text-gray-400' :
+                            'bg-gray-800 text-gray-500'
                         }`}>
                         {isLive ? '● LIVE' : isFT ? '✓ FT' : '⏸ ATTESA'}
                     </span>
