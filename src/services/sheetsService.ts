@@ -108,13 +108,19 @@ export async function aggiungiPartita(
     kickoff: string
 ): Promise<boolean> {
     try {
-        await chiamaAppsScript({
+        const params = new URLSearchParams({
             action: 'aggiungiPartita',
             fixtureId,
             homeTeam,
             awayTeam,
             kickoff,
         });
+
+        await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
+            method: 'GET',
+            mode: 'no-cors',
+        });
+
         return true;
     } catch (e) {
         console.error('Errore aggiungiPartita:', e);
@@ -126,10 +132,16 @@ export async function aggiungiPartita(
 // Cancella da Sheets — Apps Script smette di monitorarla
 export async function rimuoviPartita(fixtureId: string): Promise<boolean> {
     try {
-        await chiamaAppsScript({
+        const params = new URLSearchParams({
             action: 'rimuoviPartita',
             fixtureId,
         });
+
+        await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
+            method: 'GET',
+            mode: 'no-cors',
+        });
+
         return true;
     } catch (e) {
         console.error('Errore rimuoviPartita:', e);
