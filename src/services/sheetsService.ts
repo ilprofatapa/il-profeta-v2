@@ -105,7 +105,8 @@ export async function aggiungiPartita(
     fixtureId: string,
     homeTeam: string,
     awayTeam: string,
-    kickoff: string
+    kickoff: string,
+    league: string = ''
 ): Promise<boolean> {
     try {
         const params = new URLSearchParams({
@@ -114,6 +115,7 @@ export async function aggiungiPartita(
             homeTeam,
             awayTeam,
             kickoff,
+            league,
         });
 
         await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
