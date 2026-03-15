@@ -4,7 +4,7 @@
 // Il cameriere — chiede i dati e li porta ai componenti
 // ============================================================
 
-const APPS_SCRIPT_URL = '/api/macros/s/AKfycbxK3GTcWqA4jXbZE-Xs6xn2kcfcmmOGMQhSNjtDTgIwqItFVWpEkpPNbI6erCllH5ZkaA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxK3GTcWqA4jXbZE-Xs6xn2kcfcmmOGMQhSNjtDTgIwqItFVWpEkpPNbI6erCllH5ZkaA/exec';
 
 // ── Tipi TypeScript ──────────────────────────────────────────
 // Qui definiamo la "forma" dei dati che arrivano da Apps Script
