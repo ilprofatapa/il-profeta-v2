@@ -31,7 +31,12 @@ const FavoritesList = ({ partite, onRefresh }: FavoritesListProps) => {
         }
     };
 
+    const [aggiungendo, setAggiungendo] = useState<string | null>(null);
+
     const handleAggiungi = async (partita: PartitaDisponibile) => {
+        if (aggiungendo === partita.fixtureId) return;
+        setAggiungendo(partita.fixtureId);
+
         await aggiungiPartita(
             partita.fixtureId,
             partita.homeTeam,
@@ -39,8 +44,10 @@ const FavoritesList = ({ partite, onRefresh }: FavoritesListProps) => {
             new Date().toISOString(),
             partita.league
         );
+
         setShowSearch(false);
         setRisultati([]);
+        setAggiungendo(null);
         onRefresh();
     };
 
@@ -112,8 +119,12 @@ const FavoritesList = ({ partite, onRefresh }: FavoritesListProps) => {
                                         {giaAggiunta ? (
                                             <span className="text-xs text-emerald-400 font-bold ml-2">✓ Aggiunta</span>
                                         ) : (
-                                            <button onClick={() => handleAggiungi(partita)} className="ml-2 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-black uppercase tracking-widest hover:bg-yellow-500/20 transition-all">
-                                                + Aggiungi
+                                            <button
+                                                onClick={() => handleAggiungi(partita)}
+                                                disabled={aggiungendo === partita.fixtureId}
+                                                className="ml-2 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-black uppercase tracking-widest hover:bg-yellow-500/20 transition-all disabled:opacity-50"
+                                            >
+                                                {aggiungendo === partita.fixtureId ? '...' : '+ Aggiungi'}
                                             </button>
                                         )}
                                     </div>
