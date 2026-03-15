@@ -1,0 +1,284 @@
+// ============================================================
+// IL PROFETA v2 — components/LiveMonitor.tsx
+// I dati arrivano già calcolati da Apps Script
+// Il componente si occupa SOLO di visualizzare
+// ============================================================
+
+import { useState } from 'react';
+import type { PartitaLive } from '../services/sheetsService';
+import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
+
+// ── SparkLine SVG ─────────────────────────────────────────────
+const SparkLine = ({ data, color }: { data: number[], color: string }) => {
+    if (!data || data.length < 2) return null;
+    const max = Math.max(...data, 0.01);
+    const min = Math.min(...data);
+    const range = max - min || 0.01;
+    const points = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 100 - ((v - min) / range) * 100;
+        return `${x},${y}`;
+    }).join(' ');
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-6" preserveAspectRatio="none">
+            <polyline points={points} fill="none" stroke={color} strokeWidth="3" vectorEffect="non-scaling-stroke" />
+        </svg>
+    );
+};
+
+const getSparkColor = (trend: number): string => {
+    if (trend >= 0.15) return '#f97316';
+    if (trend >= 0.05) return '#eab308';
+    if (trend < 0) return '#60a5fa';
+    return '#6b7280';
+};
+
+// ── Semaforo ──────────────────────────────────────────────────
+const SemaforoSignal = ({
+    livello,
+    showEsci,
+}: {
+    livello: number;
+    showEsci?: boolean;
+}) => {
+    const config = {
+        0: { color: 'text-gray-500', bg: 'bg-gray-800/60', border: 'border-gray-700/40', label: 'NESSUN SEGNALE' },
+        1: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'LIV. 1' },
+        2: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', label: 'LIV. 2' },
+        3: { color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/40', label: 'LIV. 3' },
+    }[livello] ?? { color: 'text-gray-500', bg: 'bg-gray-800/60', border: 'border-gray-700/40', label: 'NESSUN SEGNALE' };
+
+    return (
+        <div className="flex flex-col items-center gap-1 pt-2">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${config.bg} ${config.border}`}>
+                <span className="text-[11px]">{semaforoEmoji(livello)}</span>
+                <span className={`text-[8px] font-black uppercase tracking-widest ${config.color}`}>
+                    {config.label}
+                </span>
+            </div>
+            {livello > 0 && (
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border ${showEsci
+                        ? 'bg-red-500/15 border-red-500/40'
+                        : 'bg-emerald-500/10 border-emerald-500/30'
+                    }`}>
+                    <span className="text-[9px]">{showEsci ? '🔴' : '🟢'}</span>
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${showEsci ? 'text-red-400 animate-pulse' : 'text-emerald-400'
+                        }`}>
+                        {showEsci ? 'ESCI' : 'TIENI'}
+                    </span>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ── Barra comparativa ─────────────────────────────────────────
+const StatBar = ({
+    label, homeVal, awayVal, isPercent = false
+}: {
+    label: string;
+    homeVal: number;
+    awayVal: number;
+    isPercent?: boolean;
+}) => {
+    const total = homeVal + awayVal || 1;
+    const homePct = (homeVal / total) * 100;
+    return (
+        <div className="space-y-0.5">
+            <div className="flex items-center justify-between text-[9px]">
+                <span className={`font-black w-10 text-right ${homeVal >= awayVal ? 'text-yellow-400' : 'text-gray-500'}`}>
+                    {homeVal}{isPercent ? '%' : ''}
+                </span>
+                <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">{label}</span>
+                <span className={`font-black w-10 text-left ${awayVal >= homeVal ? 'text-yellow-400' : 'text-gray-500'}`}>
+                    {awayVal}{isPercent ? '%' : ''}
+                </span>
+            </div>
+            <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-800">
+                <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${homePct}%` }} />
+                <div className="h-full flex-1 bg-blue-500/60" />
+            </div>
+        </div>
+    );
+};
+
+// ── LiveMonitor ───────────────────────────────────────────────
+interface LiveMonitorProps {
+    partita: PartitaLive;
+    onRemove: (fixtureId: string) => void;
+}
+
+const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
+    const [showFtStats, setShowFtStats] = useState(false);
+
+    const isLive = partita.status === '1H' || partita.status === '2H';
+    const isHT = partita.status === 'HT';
+    const isFT = partita.status === 'FT';
+    const showStats = isLive || isHT || (isFT && showFtStats);
+
+    const homeVotoLabel = getVotoLabel(partita.votoHome ?? 0);
+    const awayVotoLabel = getVotoLabel(partita.votoAway ?? 0);
+    const homeTrendLabel = getTrendLabel(partita.trendHome ?? 0);
+    const awayTrendLabel = getTrendLabel(partita.trendAway ?? 0);
+
+    const statusLabel = partita.status === 'HT' ? 'Intervallo'
+        : partita.status === 'FT' ? 'Terminata'
+            : partita.status === 'NS' ? 'Non iniziata'
+                : `${partita.minute}'`;
+
+    return (
+        <div className={`bg-gray-900 rounded-[2rem] border p-5 space-y-4 transition-all ${isLive ? 'border-yellow-500/20' : 'border-gray-800'
+            }`}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isLive ? 'bg-red-500/20 text-red-400 animate-pulse' :
+                            isFT ? 'bg-gray-700/60 text-gray-400' :
+                                'bg-gray-800 text-gray-500'
+                        }`}>
+                        {isLive ? '● LIVE' : isFT ? '✓ FT' : '⏸ ATTESA'}
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-bold">{partita.league}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400">{statusLabel}</span>
+                    <button
+                        onClick={() => onRemove(partita.fixtureId)}
+                        className="text-gray-600 hover:text-red-400 text-xs transition-colors px-1"
+                    >✕</button>
+                </div>
+            </div>
+
+            {/* Card ristretta FT */}
+            {isFT && !showFtStats && (
+                <div className="flex items-center justify-between bg-gray-800/40 rounded-2xl px-4 py-3">
+                    <span className="text-sm font-black text-white">
+                        {partita.homeTeam}{' '}
+                        <span className="text-yellow-400">{partita.scoreHome} – {partita.scoreAway}</span>{' '}
+                        {partita.awayTeam}
+                    </span>
+                    <button
+                        onClick={() => setShowFtStats(true)}
+                        className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 transition-all"
+                    >
+                        📊 Vedi Statistiche
+                    </button>
+                </div>
+            )}
+
+            {/* Bottone comprimi FT */}
+            {isFT && showFtStats && (
+                <div className="flex items-center justify-between">
+                    <div className="text-[8px] uppercase tracking-widest text-gray-600">
+                        📊 Statistiche Finali — {partita.homeTeam} {partita.scoreHome}–{partita.scoreAway} {partita.awayTeam}
+                    </div>
+                    <button
+                        onClick={() => setShowFtStats(false)}
+                        className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-xl bg-gray-800 text-gray-500 hover:text-gray-300 transition-all"
+                    >
+                        ▲ Comprimi
+                    </button>
+                </div>
+            )}
+
+            {/* Teams + Score + Voti Live + Semaforo */}
+            {showStats && (
+                <div className="flex items-center justify-between">
+
+                    {/* Casa */}
+                    <div className="flex-1 text-center space-y-1">
+                        <div className="text-sm font-black text-white truncate">{partita.homeTeam}</div>
+                        <div className={`text-3xl font-black ${homeVotoLabel.color}`}>
+                            {(partita.votoHome ?? 0).toFixed(1)}
+                        </div>
+                        <div className={`text-[8px] font-bold uppercase tracking-wider ${homeVotoLabel.color}`}>
+                            {homeVotoLabel.label}
+                        </div>
+                        <div className="pt-1 space-y-0.5">
+                            <div className={`text-base font-black ${(partita.ipHome ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                {(partita.ipHome ?? 0).toFixed(2)}
+                            </div>
+                            <div className="text-[8px] text-gray-600 uppercase tracking-widest">IP/10'</div>
+                            <div className={`text-base font-black ${homeTrendLabel.color}`}>
+                                {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
+                            </div>
+                            <div className={`text-[8px] font-bold uppercase tracking-wider ${homeTrendLabel.color}`}>
+                                {homeTrendLabel.label}
+                            </div>
+                            <SemaforoSignal livello={partita.semaforoHome ?? 0} />
+                        </div>
+                    </div>
+
+                    {/* Score */}
+                    <div className="px-3 text-center">
+                        <div className="text-2xl font-black text-yellow-400">
+                            {partita.scoreHome} – {partita.scoreAway}
+                        </div>
+                    </div>
+
+                    {/* Ospite */}
+                    <div className="flex-1 text-center space-y-1">
+                        <div className="text-sm font-black text-white truncate">{partita.awayTeam}</div>
+                        <div className={`text-3xl font-black ${awayVotoLabel.color}`}>
+                            {(partita.votoAway ?? 0).toFixed(1)}
+                        </div>
+                        <div className={`text-[8px] font-bold uppercase tracking-wider ${awayVotoLabel.color}`}>
+                            {awayVotoLabel.label}
+                        </div>
+                        <div className="pt-1 space-y-0.5">
+                            <div className={`text-base font-black ${(partita.ipAway ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                {(partita.ipAway ?? 0).toFixed(2)}
+                            </div>
+                            <div className="text-[8px] text-gray-600 uppercase tracking-widest">IP/10'</div>
+                            <div className={`text-base font-black ${awayTrendLabel.color}`}>
+                                {(partita.trendAway ?? 0) > 0 ? '+' : ''}{(partita.trendAway ?? 0).toFixed(2)}
+                            </div>
+                            <div className={`text-[8px] font-bold uppercase tracking-wider ${awayTrendLabel.color}`}>
+                                {awayTrendLabel.label}
+                            </div>
+                            <SemaforoSignal livello={partita.semaforoAway ?? 0} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Tabella confronto statistiche */}
+            {showStats && partita.stats && (
+                <div className={`bg-gray-800/40 rounded-2xl p-3 space-y-2.5 ${isHT ? 'opacity-75' : ''} ${isFT ? 'opacity-90' : ''}`}>
+                    {isHT && <div className="text-[8px] uppercase tracking-widest text-yellow-500/60 text-center mb-1">⏸ Dati congelati — Fine 1° Tempo</div>}
+                    {isFT && <div className="text-[8px] uppercase tracking-widest text-gray-500 text-center mb-1">✓ Statistiche Finali</div>}
+                    <div className="text-[8px] uppercase tracking-widest text-gray-600 text-center mb-1">Confronto Statistiche</div>
+                    <StatBar label="TIRI IN AREA" homeVal={partita.stats.sibHome} awayVal={partita.stats.sibAway} />
+                    <StatBar label="TIRI TOT." homeVal={partita.stats.shotsHome} awayVal={partita.stats.shotsAway} />
+                    <StatBar label="TIRI IN P." homeVal={partita.stats.sotHome} awayVal={partita.stats.sotAway} />
+                    <StatBar label="ANGOLI" homeVal={partita.stats.cornersHome} awayVal={partita.stats.cornersAway} />
+                    <StatBar label="POSSESSO" homeVal={partita.stats.possHome} awayVal={partita.stats.possAway} isPercent />
+                    <div className="border-t border-gray-700/50 pt-2">
+                        <div className="flex items-center justify-between text-[9px]">
+                            <span className={`font-black w-10 text-right ${(partita.ipHome ?? 0) >= (partita.ipAway ?? 0) ? 'text-yellow-400' : 'text-gray-500'}`}>
+                                {(partita.ipHome ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">IP/10'</span>
+                            <span className={`font-black w-10 text-left ${(partita.ipAway ?? 0) >= (partita.ipHome ?? 0) ? 'text-yellow-400' : 'text-gray-500'}`}>
+                                {(partita.ipAway ?? 0).toFixed(2)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] mt-1.5">
+                            <span className={`font-black w-10 text-right ${homeTrendLabel.color}`}>
+                                {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">TREND Δ</span>
+                            <span className={`font-black w-10 text-left ${awayTrendLabel.color}`}>
+                                {(partita.trendAway ?? 0) > 0 ? '+' : ''}{(partita.trendAway ?? 0).toFixed(2)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    );
+};
+
+export default LiveMonitor;

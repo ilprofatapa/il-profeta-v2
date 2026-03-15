@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -71,3 +72,7 @@ export default defineConfig([
   },
 ])
 ```
+=======
+# il-profeta-v2
+Il Profeta v2 — Sports Trading Assistant. Live match monitor con calcoli server-side su Apps Script.
+>>>>>>> b23a8e9566c2f6ee21a77363fd2f1e7776a7e5a9
