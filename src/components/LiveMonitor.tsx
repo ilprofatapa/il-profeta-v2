@@ -210,7 +210,7 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                         <div className={`text-[8px] font-bold uppercase tracking-wider ${awayVotoLabel.color}`}>
                             {awayVotoLabel.label}
                         </div>
-                        SemaforoSignal livello={partita.semaforoAway
+                        <SemaforoSignal livello={partita.semaforoAway ?? 0} />
                     </div>
                 </div>
             )}
