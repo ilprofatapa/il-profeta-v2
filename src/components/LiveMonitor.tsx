@@ -171,17 +171,25 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                         <div className={`text-[8px] font-bold uppercase tracking-wider ${homeVotoLabel.color}`}>
                             {homeVotoLabel.label}
                         </div>
-                        <div className="pt-1 space-y-0.5">
+                         <div className="pt-1 space-y-0.5">
                             <div className={`text-base font-black ${(partita.ipHome ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-400'}`}>
                                 {(partita.ipHome ?? 0).toFixed(2)}
                             </div>
                             <div className="text-[8px] text-gray-600 uppercase tracking-widest">IP/10'</div>
+                            <div className={`text-sm font-black ${(partita.ipHome5 ?? 0) > 0.2 ? 'text-blue-400' : 'text-gray-600'}`}>
+                                {(partita.ipHome5 ?? 0).toFixed(2)}
+                            </div>
+                            <div className="text-[8px] text-gray-700 uppercase tracking-widest">IP/5'</div>
                             <div className={`text-base font-black ${homeTrendLabel.color}`}>
                                 {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
                             </div>
                             <div className={`text-[8px] font-bold uppercase tracking-wider ${homeTrendLabel.color}`}>
                                 {homeTrendLabel.label}
                             </div>
+                            <div className={`text-sm font-black ${getTrendLabel(partita.trendHome5 ?? 0).color}`}>
+                                {(partita.trendHome5 ?? 0) > 0 ? '+' : ''}{(partita.trendHome5 ?? 0).toFixed(2)}
+                            </div>
+                            <div className="text-[8px] text-gray-700 uppercase tracking-widest">TREND/5'</div>
                             <SemaforoSignal livello={partita.semaforoHome ?? 0} />
                         </div>
                     </div>
@@ -202,19 +210,7 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                         <div className={`text-[8px] font-bold uppercase tracking-wider ${awayVotoLabel.color}`}>
                             {awayVotoLabel.label}
                         </div>
-                        <div className="pt-1 space-y-0.5">
-                            <div className={`text-base font-black ${(partita.ipAway ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                {(partita.ipAway ?? 0).toFixed(2)}
-                            </div>
-                            <div className="text-[8px] text-gray-600 uppercase tracking-widest">IP/10'</div>
-                            <div className={`text-base font-black ${awayTrendLabel.color}`}>
-                                {(partita.trendAway ?? 0) > 0 ? '+' : ''}{(partita.trendAway ?? 0).toFixed(2)}
-                            </div>
-                            <div className={`text-[8px] font-bold uppercase tracking-wider ${awayTrendLabel.color}`}>
-                                {awayTrendLabel.label}
-                            </div>
-                            <SemaforoSignal livello={partita.semaforoAway ?? 0} />
-                        </div>
+                        SemaforoSignal livello={partita.semaforoAway
                     </div>
                 </div>
             )}
@@ -240,13 +236,31 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                                 {(partita.ipAway ?? 0).toFixed(2)}
                             </span>
                         </div>
-                        <div className="flex items-center justify-between text-[9px] mt-1.5">
+                         <div className="flex items-center justify-between text-[9px] mt-1.5">
                             <span className={`font-black w-10 text-right ${homeTrendLabel.color}`}>
                                 {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
                             </span>
-                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">TREND Δ</span>
+                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">TREND/10'</span>
                             <span className={`font-black w-10 text-left ${awayTrendLabel.color}`}>
                                 {(partita.trendAway ?? 0) > 0 ? '+' : ''}{(partita.trendAway ?? 0).toFixed(2)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] mt-1.5">
+                            <span className={`font-black w-10 text-right ${(partita.ipHome5 ?? 0) >= (partita.ipAway5 ?? 0) ? 'text-blue-400' : 'text-gray-500'}`}>
+                                {(partita.ipHome5 ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">IP/5'</span>
+                            <span className={`font-black w-10 text-left ${(partita.ipAway5 ?? 0) >= (partita.ipHome5 ?? 0) ? 'text-blue-400' : 'text-gray-500'}`}>
+                                {(partita.ipAway5 ?? 0).toFixed(2)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] mt-1.5">
+                            <span className={`font-black w-10 text-right ${getTrendLabel(partita.trendHome5 ?? 0).color}`}>
+                                {(partita.trendHome5 ?? 0) > 0 ? '+' : ''}{(partita.trendHome5 ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-gray-600 uppercase tracking-widest text-[8px] flex-1 text-center">TREND/5'</span>
+                            <span className={`font-black w-10 text-left ${getTrendLabel(partita.trendAway5 ?? 0).color}`}>
+                                {(partita.trendAway5 ?? 0) > 0 ? '+' : ''}{(partita.trendAway5 ?? 0).toFixed(2)}
                             </span>
                         </div>
                     </div>
