@@ -171,25 +171,33 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                         <div className={`text-[8px] font-bold uppercase tracking-wider ${homeVotoLabel.color}`}>
                             {homeVotoLabel.label}
                         </div>
-                         <div className="pt-1 space-y-0.5">
-                            <div className={`text-base font-black ${(partita.ipHome ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                {(partita.ipHome ?? 0).toFixed(2)}
+                         <div className="pt-1 space-y-1.5">
+                            <div className="grid grid-cols-2 gap-1">
+                                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-yellow-500/60 uppercase tracking-widest mb-0.5">IP/10'</div>
+                                    <div className={`text-sm font-black ${(partita.ipHome ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                                        {(partita.ipHome ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-blue-500/60 uppercase tracking-widest mb-0.5">IP/5'</div>
+                                    <div className={`text-sm font-black ${(partita.ipHome5 ?? 0) > 0.2 ? 'text-blue-400' : 'text-gray-500'}`}>
+                                        {(partita.ipHome5 ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-yellow-500/60 uppercase tracking-widest mb-0.5">TR/10'</div>
+                                    <div className={`text-sm font-black ${homeTrendLabel.color}`}>
+                                        {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-blue-500/60 uppercase tracking-widest mb-0.5">TR/5'</div>
+                                    <div className={`text-sm font-black ${getTrendLabel(partita.trendHome5 ?? 0).color}`}>
+                                        {(partita.trendHome5 ?? 0) > 0 ? '+' : ''}{(partita.trendHome5 ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="text-[8px] text-gray-600 uppercase tracking-widest">IP/10'</div>
-                            <div className={`text-sm font-black ${(partita.ipHome5 ?? 0) > 0.2 ? 'text-blue-400' : 'text-gray-600'}`}>
-                                {(partita.ipHome5 ?? 0).toFixed(2)}
-                            </div>
-                            <div className="text-[8px] text-gray-700 uppercase tracking-widest">IP/5'</div>
-                            <div className={`text-base font-black ${homeTrendLabel.color}`}>
-                                {(partita.trendHome ?? 0) > 0 ? '+' : ''}{(partita.trendHome ?? 0).toFixed(2)}
-                            </div>
-                            <div className={`text-[8px] font-bold uppercase tracking-wider ${homeTrendLabel.color}`}>
-                                {homeTrendLabel.label}
-                            </div>
-                            <div className={`text-sm font-black ${getTrendLabel(partita.trendHome5 ?? 0).color}`}>
-                                {(partita.trendHome5 ?? 0) > 0 ? '+' : ''}{(partita.trendHome5 ?? 0).toFixed(2)}
-                            </div>
-                            <div className="text-[8px] text-gray-700 uppercase tracking-widest">TREND/5'</div>
                             <SemaforoSignal livello={partita.semaforoHome ?? 0} />
                         </div>
                     </div>
@@ -210,9 +218,36 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                         <div className={`text-[8px] font-bold uppercase tracking-wider ${awayVotoLabel.color}`}>
                             {awayVotoLabel.label}
                         </div>
-                        <SemaforoSignal livello={partita.semaforoAway ?? 0} />
+                        <div className="pt-1 space-y-1.5">
+                            <div className="grid grid-cols-2 gap-1">
+                                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-yellow-500/60 uppercase tracking-widest mb-0.5">IP/10'</div>
+                                    <div className={`text-sm font-black ${(partita.ipAway ?? 0) > 0.2 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                                        {(partita.ipAway ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-blue-500/60 uppercase tracking-widest mb-0.5">IP/5'</div>
+                                    <div className={`text-sm font-black ${(partita.ipAway5 ?? 0) > 0.2 ? 'text-blue-400' : 'text-gray-500'}`}>
+                                        {(partita.ipAway5 ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-yellow-500/60 uppercase tracking-widest mb-0.5">TR/10'</div>
+                                    <div className={`text-sm font-black ${awayTrendLabel.color}`}>
+                                        {(partita.trendAway ?? 0) > 0 ? '+' : ''}{(partita.trendAway ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-1.5 py-1 text-center">
+                                    <div className="text-[7px] text-blue-500/60 uppercase tracking-widest mb-0.5">TR/5'</div>
+                                    <div className={`text-sm font-black ${getTrendLabel(partita.trendAway5 ?? 0).color}`}>
+                                        {(partita.trendAway5 ?? 0) > 0 ? '+' : ''}{(partita.trendAway5 ?? 0).toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+                            <SemaforoSignal livello={partita.semaforoAway ?? 0} />
+                        </div>
                     </div>
-                </div>
             )}
 
             {/* Tabella confronto statistiche */}
