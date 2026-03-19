@@ -153,6 +153,11 @@ const AnalisiPopup = ({
                             </div>
                             <p className="text-sm font-bold text-yellow-400">{param.value}</p>
                             <p className="text-[10px] text-gray-500">{param.motivation}</p>
+                            {param.rawData && (
+                                <p className="text-[10px] font-mono text-gray-600 bg-gray-800/60 rounded-lg px-2 py-1 mt-1">
+                                    {param.rawData}
+                                </p>
+                            )}
                         </div>
                     ))}
                 </div>
