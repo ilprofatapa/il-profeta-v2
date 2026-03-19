@@ -355,6 +355,7 @@ const PreMatch = ({
     const [showLeghePanel, setShowLeghePanel] = useState(false);
     const [filtroArea, setFiltroArea]       = useState<string>('Tutte');
     const [filtroMin, setFiltroMin]         = useState<number>(0);
+     const [ordinamento, setOrdinamento] = useState<'voto' | 'lega' | 'orario'>('voto');
     const [analisiPartita, setAnalisiPartita] = useState<PartitaPrematch | null>(null);
     const [pollingRef, setPollingRef]       = useState<ReturnType<typeof setInterval> | null>(null);
 
@@ -414,7 +415,20 @@ const PreMatch = ({
     const partiteFiltrate = partite
         .filter(p => filtroArea === 'Tutte' || p.area === filtroArea)
         .filter(p => Math.max(p.sign1, p.sign2, p.over25) >= filtroMin)
-        .sort((a, b) => Math.max(b.sign1, b.sign2, b.over25) - Math.max(a.sign1, a.sign2, a.over25));
+        .sort((a, b) => {
+            if (ordinamento === 'voto') {
+                return Math.max(b.sign1, b.sign2, b.over25) - Math.max(a.sign1, a.sign2, a.over25);
+            }
+            if (ordinamento === 'lega') {
+                const legaCompare = a.leagueName.localeCompare(b.leagueName);
+                if (legaCompare !== 0) return legaCompare;
+                return new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
+            }
+            // orario
+            const timeCompare = new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
+            if (timeCompare !== 0) return timeCompare;
+            return a.leagueName.localeCompare(b.leagueName);
+        });
 
     const formattedDate = new Date(date).toLocaleDateString('it-IT', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -500,6 +514,23 @@ const PreMatch = ({
                                 }`}
                             >
                                 {v === 0 ? 'Tutti' : v.toFixed(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-gray-900/60 rounded-xl px-3 py-1.5 border border-gray-800/50">
+                        <span className="text-[10px] uppercase tracking-widest text-gray-600">Ordina</span>
+                        {([['voto', 'Voto'], ['lega', 'Lega'], ['orario', 'Orario']] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setOrdinamento(val)}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                    ordinamento === val
+                                        ? 'bg-yellow-500 text-gray-950'
+                                        : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                {label}
                             </button>
                         ))}
                     </div>
