@@ -56,6 +56,19 @@ export interface PartitaDisponibile {
     league: string;
 }
 
+export interface PrematchParametro {
+    parameter: string;
+    value: string;
+    score: number;
+    motivation: string;
+}
+
+export interface PrematchMercato {
+    finalScore: number;
+    recommendation: string;
+    parameters: PrematchParametro[];
+}
+
 // ── Tipi prematch ────────────────────────────────────────────
 
 export interface PartitaPrematch {
@@ -78,6 +91,11 @@ export interface PartitaPrematch {
     sign1: number;
     sign2: number;
     over25: number;
+    dettaglio?: {
+        sign1: PrematchMercato;
+        sign2: PrematchMercato;
+        over25: PrematchMercato;
+    };
 }
 
 export interface PrematchResponse {
