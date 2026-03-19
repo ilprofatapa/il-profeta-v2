@@ -1,7 +1,6 @@
 // ============================================================
 // IL PROFETA v2 — components/PreMatch.tsx
-// Schermata analisi pre-match
-// v2.3.0
+// v2.3.1 — con popup dettaglio analisi
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +9,7 @@ import {
     LEGHE_EXTRA_DISPONIBILI,
     getVotoColor, getOddColor,
 } from '../services/sheetsService';
-import type { PartitaPrematch } from '../services/sheetsService';
+import type { PartitaPrematch, PrematchMercato } from '../services/sheetsService';
 
 const LEGHE_PREFERITE_NOMI = [
     'Champions League', 'Premier League', 'Serie A',
@@ -19,7 +18,7 @@ const LEGHE_PREFERITE_NOMI = [
 
 const AREE = ['Sud America', 'Nord America', 'Europa', 'Asia'];
 
-// ── Componente voto ──────────────────────────────────────────
+// ── Voto badge ────────────────────────────────────────────────
 const VotoBadge = ({ label, voto }: { label: string; voto: number }) => (
     <div className="flex flex-col items-center gap-0.5">
         <span className="text-[8px] uppercase tracking-widest text-gray-600">{label}</span>
@@ -28,25 +27,153 @@ const VotoBadge = ({ label, voto }: { label: string; voto: number }) => (
         </span>
         <div className="w-full bg-gray-800 rounded-full h-1">
             <div
-                className={`h-1 rounded-full transition-all ${voto >= 4.0 ? 'bg-emerald-400' : voto >= 3.5 ? 'bg-yellow-400' : voto >= 3.0 ? 'bg-orange-400' : 'bg-gray-600'}`}
+                className={`h-1 rounded-full transition-all ${
+                    voto >= 4.0 ? 'bg-emerald-400' :
+                    voto >= 3.5 ? 'bg-yellow-400' :
+                    voto >= 3.0 ? 'bg-orange-400' : 'bg-gray-600'
+                }`}
                 style={{ width: `${Math.min(100, (voto / 5) * 100)}%` }}
             />
         </div>
     </div>
 );
 
-// ── Card partita prematch ────────────────────────────────────
+// ── Popup dettaglio analisi ───────────────────────────────────
+const AnalisiPopup = ({
+    partita,
+    onClose,
+}: {
+    partita: PartitaPrematch;
+    onClose: () => void;
+}) => {
+    const [tab, setTab] = useState<'sign1' | 'sign2' | 'over25'>('sign1');
+    if (!partita.dettaglio) return null;
+
+    const mercati: Record<string, PrematchMercato> = {
+        sign1:  partita.dettaglio.sign1,
+        sign2:  partita.dettaglio.sign2,
+        over25: partita.dettaglio.over25,
+    };
+    const mercato = mercati[tab];
+    const nomi: Record<string, string> = {
+        sign1: 'Segno 1', sign2: 'Segno 2', over25: 'Over 2.5',
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div
+                className="bg-gray-950 border border-gray-800 rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between p-5 border-b border-gray-800 bg-gray-900/50">
+                    <div>
+                        <div className="inline-block px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-500 text-[10px] font-black uppercase tracking-widest mb-1">
+                            Analisi Oracolo
+                        </div>
+                        <h2 className="text-lg font-black text-white italic">
+                            {partita.teams.home.name} vs {partita.teams.away.name}
+                        </h2>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">
+                            {partita.leagueName}
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                    >✕</button>
+                </div>
+
+                {/* Tab mercati */}
+                <div className="flex gap-1 p-3 bg-gray-900/30 border-b border-gray-800">
+                    {(['sign1', 'sign2', 'over25'] as const).map(t => (
+                        <button
+                            key={t}
+                            onClick={() => setTab(t)}
+                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${
+                                tab === t
+                                    ? 'bg-yellow-500 text-gray-950'
+                                    : 'text-gray-500 hover:text-gray-300 bg-gray-800/60'
+                            }`}
+                        >
+                            {nomi[t]}
+                            {tab !== t && (
+                                <span className={`ml-1.5 text-[10px] ${
+                                    mercati[t].finalScore >= 4.0 ? 'text-emerald-400' :
+                                    mercati[t].finalScore >= 3.0 ? 'text-yellow-400' : 'text-rose-400'
+                                }`}>
+                                    {mercati[t].finalScore.toFixed(2)}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Contenuto scrollabile */}
+                <div className="overflow-y-auto p-5 space-y-3">
+
+                    {/* Score mercato attivo */}
+                    <div className="flex items-center justify-between bg-gray-900 rounded-2xl px-4 py-3 border border-gray-800">
+                        <span className="text-xs font-black uppercase tracking-widest text-gray-500">
+                            {nomi[tab]}
+                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className={`text-2xl font-black ${
+                                mercato.finalScore >= 4.0 ? 'text-emerald-400' :
+                                mercato.finalScore >= 3.0 ? 'text-yellow-400' : 'text-rose-400'
+                            }`}>
+                                {mercato.finalScore.toFixed(2)}
+                            </span>
+                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${
+                                mercato.recommendation.includes('Scommetti') || mercato.recommendation.includes('Alta')
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            }`}>
+                                {mercato.recommendation}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Parametri */}
+                    {mercato.parameters.map((param, idx) => (
+                        <div key={idx} className="bg-gray-900 rounded-xl p-3 border border-gray-800/50 space-y-1">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                    {param.parameter}
+                                </span>
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm border ${
+                                    param.score >= 4.0
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                        : param.score >= 3.0
+                                        ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                }`}>
+                                    {param.score.toFixed(1)}
+                                </div>
+                            </div>
+                            <p className="text-sm font-bold text-yellow-400">{param.value}</p>
+                            <p className="text-[10px] text-gray-500">{param.motivation}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── Card partita prematch ─────────────────────────────────────
 const PartitaCard = ({
     partita,
     onAddToMonitor,
+    onShowAnalisi,
 }: {
     partita: PartitaPrematch;
     onAddToMonitor: (p: PartitaPrematch) => void;
+    onShowAnalisi: (p: PartitaPrematch) => void;
 }) => {
     const kickoff = new Date(partita.commenceTime).toLocaleTimeString('it-IT', {
         hour: '2-digit', minute: '2-digit',
     });
-
     const isPreferiti = LEGHE_PREFERITE_NOMI.includes(partita.leagueName);
     const bestVoto    = Math.max(partita.sign1, partita.sign2, partita.over25);
     const isHot       = bestVoto >= 4.0;
@@ -110,23 +237,33 @@ const PartitaCard = ({
 
             {/* Voti */}
             <div className="grid grid-cols-3 gap-2">
-                <VotoBadge label="Segno 1" voto={partita.sign1} />
+                <VotoBadge label="Segno 1"  voto={partita.sign1}  />
                 <VotoBadge label="Over 2.5" voto={partita.over25} />
-                <VotoBadge label="Segno 2" voto={partita.sign2} />
+                <VotoBadge label="Segno 2"  voto={partita.sign2}  />
             </div>
 
-            {/* Bottone monitor */}
-            <button
-                onClick={() => onAddToMonitor(partita)}
-                className="w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-yellow-500/10 border border-gray-700 hover:border-yellow-500/30 text-gray-500 hover:text-yellow-400 transition-all"
-            >
-                + Aggiungi al Monitor Live
-            </button>
+            {/* Bottoni */}
+            <div className="flex gap-2">
+                {partita.dettaglio && (
+                    <button
+                        onClick={() => onShowAnalisi(partita)}
+                        className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 transition-all"
+                    >
+                        🔍 Analisi
+                    </button>
+                )}
+                <button
+                    onClick={() => onAddToMonitor(partita)}
+                    className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-500 hover:text-gray-300 transition-all"
+                >
+                    + Monitor
+                </button>
+            </div>
         </div>
     );
 };
 
-// ── Selettore leghe extra ────────────────────────────────────
+// ── Selettore leghe extra ─────────────────────────────────────
 const LegheExtraPanel = ({
     onClose,
     onSave,
@@ -206,22 +343,20 @@ const PreMatch = ({
 }: {
     onAddToMonitor: (fixtureId: string, homeTeam: string, awayTeam: string, kickoff: string, league: string) => void;
 }) => {
-    const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const [partite, setPartite]         = useState<PartitaPrematch[]>([]);
-    const [loading, setLoading]         = useState(false);
-    const [processing, setProcessing]   = useState(false);
+    const [date, setDate]                   = useState(() => new Date().toISOString().split('T')[0]);
+    const [partite, setPartite]             = useState<PartitaPrematch[]>([]);
+    const [loading, setLoading]             = useState(false);
+    const [processing, setProcessing]       = useState(false);
     const [showLeghePanel, setShowLeghePanel] = useState(false);
-    const [filtroArea, setFiltroArea]   = useState<string>('Tutte');
-    const [filtroMin, setFiltroMin]     = useState<number>(0);
-    const [pollingRef, setPollingRef]   = useState<ReturnType<typeof setInterval> | null>(null);
+    const [filtroArea, setFiltroArea]       = useState<string>('Tutte');
+    const [filtroMin, setFiltroMin]         = useState<number>(0);
+    const [analisiPartita, setAnalisiPartita] = useState<PartitaPrematch | null>(null);
+    const [pollingRef, setPollingRef]       = useState<ReturnType<typeof setInterval> | null>(null);
 
     const areeDisponibili = ['Tutte', 'Europa', 'Sud America', 'Nord America', 'Asia'];
 
     const stopPolling = useCallback(() => {
-        if (pollingRef) {
-            clearInterval(pollingRef);
-            setPollingRef(null);
-        }
+        if (pollingRef) { clearInterval(pollingRef); setPollingRef(null); }
     }, [pollingRef]);
 
     const avviaScan = async () => {
@@ -232,14 +367,12 @@ const PreMatch = ({
 
         try {
             const result = await getPrematch(date);
-
             if (result.status === 'ok' && result.partite.length > 0) {
                 setPartite(result.partite);
                 setLoading(false);
                 return;
             }
 
-            // Status processing — avvia polling ogni 10s
             setProcessing(true);
             setLoading(false);
 
@@ -253,7 +386,7 @@ const PreMatch = ({
                         setPollingRef(null);
                     }
                 } catch(e) {
-                    console.error('Errore polling prematch:', e);
+                    console.error('Errore polling:', e);
                 }
             }, 10_000);
 
@@ -265,7 +398,6 @@ const PreMatch = ({
         }
     };
 
-    // Cleanup polling su unmount
     useEffect(() => {
         return () => { if (pollingRef) clearInterval(pollingRef); };
     }, [pollingRef]);
@@ -276,15 +408,8 @@ const PreMatch = ({
 
     const partiteFiltrate = partite
         .filter(p => filtroArea === 'Tutte' || p.area === filtroArea)
-        .filter(p => {
-            const best = Math.max(p.sign1, p.sign2, p.over25);
-            return best >= filtroMin;
-        })
-        .sort((a, b) => {
-            const bestA = Math.max(a.sign1, a.sign2, a.over25);
-            const bestB = Math.max(b.sign1, b.sign2, b.over25);
-            return bestB - bestA;
-        });
+        .filter(p => Math.max(p.sign1, p.sign2, p.over25) >= filtroMin)
+        .sort((a, b) => Math.max(b.sign1, b.sign2, b.over25) - Math.max(a.sign1, a.sign2, a.over25));
 
     const formattedDate = new Date(date).toLocaleDateString('it-IT', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -293,7 +418,7 @@ const PreMatch = ({
     return (
         <div className="space-y-6">
 
-            {/* Header + controlli */}
+            {/* Header controlli */}
             <div className="bg-gray-900 rounded-[2rem] border border-gray-800 p-6 space-y-5">
                 <div className="text-center space-y-1">
                     <div className="inline-block px-4 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full">
@@ -306,7 +431,6 @@ const PreMatch = ({
                     </p>
                 </div>
 
-                {/* Selettore data + bottoni */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 justify-center">
                     <input
                         type="date"
@@ -317,9 +441,9 @@ const PreMatch = ({
                     <button
                         onClick={avviaScan}
                         disabled={loading || processing}
-                        className="h-[52px] px-8 bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-800 text-gray-950 font-black text-sm rounded-2xl transition-all"
+                        className="h-[52px] px-8 bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-800 disabled:text-gray-600 text-gray-950 font-black text-sm rounded-2xl transition-all"
                     >
-                        {loading ? 'Caricamento...' : processing ? 'Elaborazione in corso...' : 'Sblocca Partite'}
+                        {loading ? 'Caricamento...' : processing ? 'Elaborazione...' : 'Sblocca Partite'}
                     </button>
                     <button
                         onClick={() => setShowLeghePanel(true)}
@@ -329,12 +453,11 @@ const PreMatch = ({
                     </button>
                 </div>
 
-                {/* Processing indicator */}
                 {processing && (
                     <div className="flex items-center justify-center gap-3 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl px-4 py-3">
                         <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
                         <span className="text-yellow-500 text-[10px] font-black uppercase tracking-widest">
-                            Apps Script sta elaborando le partite — aggiornamento automatico ogni 10s
+                            Apps Script sta elaborando — aggiornamento automatico ogni 10s
                         </span>
                     </div>
                 )}
@@ -343,7 +466,6 @@ const PreMatch = ({
             {/* Filtri */}
             {partite.length > 0 && (
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Filtro area */}
                     <div className="flex gap-1 bg-gray-900/60 rounded-xl p-1 border border-gray-800/50">
                         {areeDisponibili.map(area => (
                             <button
@@ -360,7 +482,6 @@ const PreMatch = ({
                         ))}
                     </div>
 
-                    {/* Filtro voto minimo */}
                     <div className="flex items-center gap-2 bg-gray-900/60 rounded-xl px-3 py-1.5 border border-gray-800/50">
                         <span className="text-[10px] uppercase tracking-widest text-gray-600">Min voto</span>
                         {[0, 3.0, 3.5, 4.0].map(v => (
@@ -391,7 +512,8 @@ const PreMatch = ({
                         <PartitaCard
                             key={p.fixtureId}
                             partita={p}
-                            onAddToMonitor={(partita) => onAddToMonitor(
+                            onShowAnalisi={p => setAnalisiPartita(p)}
+                            onAddToMonitor={partita => onAddToMonitor(
                                 partita.fixtureId,
                                 partita.teams.home.name,
                                 partita.teams.away.name,
@@ -411,6 +533,14 @@ const PreMatch = ({
                         Seleziona una data e clicca Sblocca Partite
                     </p>
                 </div>
+            )}
+
+            {/* Popup analisi */}
+            {analisiPartita && (
+                <AnalisiPopup
+                    partita={analisiPartita}
+                    onClose={() => setAnalisiPartita(null)}
+                />
             )}
 
             {/* Panel leghe extra */}
