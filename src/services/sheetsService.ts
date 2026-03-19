@@ -1,14 +1,12 @@
 // ============================================================
 // IL PROFETA v2 — services/sheetsService.ts
 // L'unico file che parla con Apps Script
-// Il cameriere — chiede i dati e li porta ai componenti
+// v2.3.0 — Dual window + Prematch
 // ============================================================
 
 const APPS_SCRIPT_URL = '/api/proxy';
 
-// ── Tipi TypeScript ──────────────────────────────────────────
-// Qui definiamo la "forma" dei dati che arrivano da Apps Script
-// TypeScript ci avvisa se proviamo ad usare un campo che non esiste
+// ── Tipi live ────────────────────────────────────────────────
 
 export interface PartitaStats {
     sibHome: number;
@@ -33,8 +31,12 @@ export interface PartitaLive {
     scoreAway: number;
     ipHome: number;
     ipAway: number;
+    ipHome5: number;
+    ipAway5: number;
     trendHome: number;
     trendAway: number;
+    trendHome5: number;
+    trendAway5: number;
     semaforoHome: number;
     semaforoAway: number;
     votoHome: number;
@@ -54,16 +56,50 @@ export interface PartitaDisponibile {
     league: string;
 }
 
-// ── Funzione base — chiama Apps Script ───────────────────────
-// Tutti i metodi qui sotto la usano internamente
+// ── Tipi prematch ────────────────────────────────────────────
+
+export interface PartitaPrematch {
+    fixtureId: string;
+    referenceDate: string;
+    leagueName: string;
+    leagueId: number;
+    area: string;
+    commenceTime: string;
+    teams: {
+        home: { id: number; name: string; logo: string };
+        away: { id: number; name: string; logo: string };
+    };
+    odds: {
+        home: number | null;
+        away: number | null;
+        over25: number | null;
+        over35: number | null;
+    };
+    sign1: number;
+    sign2: number;
+    over25: number;
+}
+
+export interface PrematchResponse {
+    status: 'ok' | 'processing';
+    partite: PartitaPrematch[];
+    fromCache: boolean;
+}
+
+export interface LegaExtra {
+    id: number;
+    name: string;
+    area: string;
+}
+
+// ── Funzione base ────────────────────────────────────────────
+
 async function chiamaAppsScript(params: Record<string, string>): Promise<unknown> {
     const queryString = Object.entries(params)
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join('&');
 
-    const fullUrl = `${APPS_SCRIPT_URL}?${queryString}`;
-
-    const response = await fetch(fullUrl, {
+    const response = await fetch(`${APPS_SCRIPT_URL}?${queryString}`, {
         method: 'GET',
         redirect: 'follow',
     });
@@ -75,8 +111,8 @@ async function chiamaAppsScript(params: Record<string, string>): Promise<unknown
     return response.json();
 }
 
-// ── Ottieni le partite monitorate con dati live ──────────────
-// Chiamata ogni 30 secondi dal frontend per aggiornare i dati
+// ── Live ─────────────────────────────────────────────────────
+
 export async function getPartiteMonitor(): Promise<PartitaLive[]> {
     try {
         const data = await chiamaAppsScript({ action: 'getPartite' });
@@ -87,8 +123,6 @@ export async function getPartiteMonitor(): Promise<PartitaLive[]> {
     }
 }
 
-// ── Ottieni tutte le partite live disponibili ────────────────
-// Usata quando l'utente vuole aggiungere una partita ai preferiti
 export async function getPartiteLive(): Promise<PartitaDisponibile[]> {
     try {
         const data = await chiamaAppsScript({ action: 'getPartiteLive' });
@@ -99,8 +133,6 @@ export async function getPartiteLive(): Promise<PartitaDisponibile[]> {
     }
 }
 
-// ── Aggiungi una partita ai preferiti ───────────────────────
-// Scrive su Sheets — Apps Script inizia a monitorarla
 export async function aggiungiPartita(
     fixtureId: string,
     homeTeam: string,
@@ -111,18 +143,12 @@ export async function aggiungiPartita(
     try {
         const params = new URLSearchParams({
             action: 'aggiungiPartita',
-            fixtureId,
-            homeTeam,
-            awayTeam,
-            kickoff,
-            league,
+            fixtureId, homeTeam, awayTeam, kickoff, league,
         });
-
         await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
             method: 'GET',
             mode: 'no-cors',
         });
-
         return true;
     } catch (e) {
         console.error('Errore aggiungiPartita:', e);
@@ -130,20 +156,16 @@ export async function aggiungiPartita(
     }
 }
 
-// ── Rimuovi una partita dai preferiti ───────────────────────
-// Cancella da Sheets — Apps Script smette di monitorarla
 export async function rimuoviPartita(fixtureId: string): Promise<boolean> {
     try {
         const params = new URLSearchParams({
             action: 'rimuoviPartita',
             fixtureId,
         });
-
         await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
             method: 'GET',
             mode: 'no-cors',
         });
-
         return true;
     } catch (e) {
         console.error('Errore rimuoviPartita:', e);
@@ -151,7 +173,50 @@ export async function rimuoviPartita(fixtureId: string): Promise<boolean> {
     }
 }
 
-// ── Helper semaforo → emoji ──────────────────────────────────
+// ── Prematch ─────────────────────────────────────────────────
+
+export async function getPrematch(date: string): Promise<PrematchResponse> {
+    try {
+        const data = await chiamaAppsScript({ action: 'getPrematch', date });
+        return data as PrematchResponse;
+    } catch (e) {
+        console.error('Errore getPrematch:', e);
+        return { status: 'processing', partite: [], fromCache: false };
+    }
+}
+
+export async function setLegheExtra(ids: number[]): Promise<boolean> {
+    try {
+        await chiamaAppsScript({
+            action: 'setLegheExtra',
+            ids: JSON.stringify(ids),
+        });
+        return true;
+    } catch (e) {
+        console.error('Errore setLegheExtra:', e);
+        return false;
+    }
+}
+
+export const LEGHE_EXTRA_DISPONIBILI: LegaExtra[] = [
+    { id: 71,  name: 'Brasileirao',          area: 'Sud America' },
+    { id: 128, name: 'Liga Profesional ARG',  area: 'Sud America' },
+    { id: 265, name: 'Primera Division URU',  area: 'Sud America' },
+    { id: 239, name: 'Primera Division CHI',  area: 'Sud America' },
+    { id: 281, name: 'Liga MX',               area: 'Nord America' },
+    { id: 253, name: 'MLS',                   area: 'Nord America' },
+    { id: 203, name: 'Super Lig TUR',         area: 'Europa' },
+    { id: 144, name: 'Pro League BEL',        area: 'Europa' },
+    { id: 218, name: 'Bundesliga AUT',        area: 'Europa' },
+    { id: 113, name: 'Allsvenskan SWE',       area: 'Europa' },
+    { id: 207, name: 'Super League SUI',      area: 'Europa' },
+    { id: 292, name: 'K League KOR',          area: 'Asia' },
+    { id: 169, name: 'J-League JPN',          area: 'Asia' },
+    { id: 17,  name: 'AFC Champions',         area: 'Asia' },
+];
+
+// ── Helpers ───────────────────────────────────────────────────
+
 export const semaforoEmoji = (livello: number): string => {
     if (livello === 3) return '🟢';
     if (livello === 2) return '🟠';
@@ -159,21 +224,33 @@ export const semaforoEmoji = (livello: number): string => {
     return '⚫';
 };
 
-// ── Helper trend → etichetta ─────────────────────────────────
 export const getTrendLabel = (delta: number): { label: string; color: string } => {
-    if (delta >= 0.20) return { label: '🚀 ESPLOSO', color: 'text-red-400' };
+    if (delta >= 0.20) return { label: '🚀 ESPLOSO',   color: 'text-red-400' };
     if (delta >= 0.15) return { label: '📈 IN SALITA', color: 'text-orange-400' };
-    if (delta >= 0.10) return { label: '↗ CRESCENTE', color: 'text-yellow-400' };
-    if (delta >= 0.05) return { label: '→ STABILE', color: 'text-gray-400' };
-    if (delta >= 0) return { label: '↘ PIATTO', color: 'text-gray-600' };
-    return { label: '📉 IN CALO', color: 'text-blue-400' };
+    if (delta >= 0.10) return { label: '↗ CRESCENTE',  color: 'text-yellow-400' };
+    if (delta >= 0.05) return { label: '→ STABILE',    color: 'text-gray-400' };
+    if (delta >= 0)    return { label: '↘ PIATTO',     color: 'text-gray-600' };
+    return                    { label: '📉 IN CALO',   color: 'text-blue-400' };
 };
 
-// ── Helper voto → etichetta ──────────────────────────────────
 export const getVotoLabel = (v: number): { label: string; color: string } => {
-    if (v >= 4.5) return { label: '🔴 GOL IN ARRIVO', color: 'text-red-400' };
-    if (v >= 3.5) return { label: '🟠 PORTA SOTTO ASSEDIO', color: 'text-orange-400' };
+    if (v >= 4.5) return { label: '🔴 GOL IN ARRIVO',             color: 'text-red-400' };
+    if (v >= 3.5) return { label: '🟠 PORTA SOTTO ASSEDIO',       color: 'text-orange-400' };
     if (v >= 2.5) return { label: '🟡 SPINGONO MA SENZA MORDERE', color: 'text-yellow-400' };
-    if (v >= 1.5) return { label: '⚪ PASSAMI IL CUSCINO', color: 'text-gray-400' };
-    return { label: '💤 SPARITI DAL CAMPO', color: 'text-gray-600' };
+    if (v >= 1.5) return { label: '⚪ PASSAMI IL CUSCINO',        color: 'text-gray-400' };
+    return              { label: '💤 SPARITI DAL CAMPO',          color: 'text-gray-600' };
+};
+
+export const getVotoColor = (voto: number): string => {
+    if (voto >= 4.0) return 'text-emerald-400';
+    if (voto >= 3.5) return 'text-yellow-400';
+    if (voto >= 3.0) return 'text-orange-400';
+    return 'text-gray-500';
+};
+
+export const getOddColor = (odd: number | null): string => {
+    if (!odd) return 'text-gray-600';
+    if (odd >= 1.60 && odd <= 2.40) return 'text-emerald-400';
+    if (odd <= 2.80) return 'text-yellow-400';
+    return 'text-gray-500';
 };
