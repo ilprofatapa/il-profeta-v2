@@ -21,6 +21,17 @@ export interface PartitaStats {
     possAway: number;
 }
 
+export interface EventoLive {
+    minute: number;
+    extraTime: number | null;
+    team: string;
+    teamId: number;
+    player: string;
+    assist: string | null;
+    type: 'goal' | 'autogoal' | 'penalty' | 'yellow' | 'red' | 'second_yellow' | 'subst';
+    detail: string;
+}
+
 export interface PartitaLive {
     fixtureId: string;
     homeTeam: string;
@@ -43,6 +54,7 @@ export interface PartitaLive {
     votoAway: number;
     league: string;
     stats?: PartitaStats;
+     events?: EventoLive[];
 }
 
 export interface PartitaDisponibile {
