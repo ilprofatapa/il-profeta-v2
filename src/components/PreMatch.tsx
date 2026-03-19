@@ -10,7 +10,7 @@ import {
     LEGHE_EXTRA_DISPONIBILI,
     getVotoColor, getOddColor,
 } from '../services/sheetsService';
-import type { PartitaPrematch, LegaExtra } from '../services/sheetsService';
+import type { PartitaPrematch } from '../services/sheetsService';
 
 const LEGHE_PREFERITE_NOMI = [
     'Champions League', 'Premier League', 'Serie A',
