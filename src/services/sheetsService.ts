@@ -61,6 +61,7 @@ export interface PrematchParametro {
     value: string;
     score: number;
     motivation: string;
+    rawData?: string;
 }
 
 export interface PrematchMercato {
