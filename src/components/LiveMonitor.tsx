@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import type { PartitaLive } from '../services/sheetsService';
 import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
+import TimelineBar from './TimelineBar';
 
 // ── Semaforo ──────────────────────────────────────────────────
 const SemaforoSignal = ({
@@ -250,6 +251,18 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                 </div>
             )}
 
+            {/* Timeline eventi */}
+            {showStats && partita.events && partita.events.length > 0 && (
+                <div className="bg-gray-800/40 rounded-2xl p-3">
+                    <TimelineBar
+                        events={partita.events}
+                        homeTeam={partita.homeTeam}
+                        awayTeam={partita.awayTeam}
+                        minute={partita.minute}
+                    />
+                </div>
+            )}
+            
             {/* Tabella confronto statistiche */}
             {showStats && partita.stats && (
                 <div className={`bg-gray-800/40 rounded-2xl p-3 space-y-2.5 ${isHT ? 'opacity-75' : ''} ${isFT ? 'opacity-90' : ''}`}>
