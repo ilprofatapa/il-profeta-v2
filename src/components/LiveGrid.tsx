@@ -6,7 +6,6 @@
 
 import { useState } from 'react';
 import type { PartitaLive, EventoLive } from '../services/sheetsService';
-import { getTrendLabel, getVotoLabel } from '../services/sheetsService';
 import LiveMonitor from './LiveMonitor';
 
 // ── Conversione classi Tailwind → hex ─────────────────────────
