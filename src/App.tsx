@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { getPartiteMonitor, aggiungiPartita } from './services/sheetsService';
 import type { PartitaLive } from './services/sheetsService';
-import FavoritesList from './components/FavoritesList';
+import LiveGrid from './components/LiveGrid';
 import PreMatch from './components/PreMatch';
 
 type Tab = 'prematch' | 'live';
@@ -116,9 +116,14 @@ export default function App() {
                 <p>Caricamento...</p>
               </div>
             ) : (
-              <FavoritesList
+              <LiveGrid
                 partite={partite}
                 onRefresh={caricaDati}
+                onRemove={async (id) => {
+                  // se hai una funzione rimozionePartita in sheetsService, chiamala qui
+                  // altrimenti semplicemente ricarica
+                  await caricaDati();
+                }}
               />
             )}
           </>
