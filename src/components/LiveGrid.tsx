@@ -5,17 +5,9 @@
 // ============================================================
 
 import { useState } from 'react';
-import type { PartitaLive } from '../services/sheetsService';
-import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
+import type { PartitaLive, EventoLive } from '../services/sheetsService';
+import { getTrendLabel, getVotoLabel } from '../services/sheetsService';
 import LiveMonitor from './LiveMonitor';
-
-// ── Tipi eventi timeline ──────────────────────────────────────
-interface MatchEvent {
-  time: { elapsed: number };
-  type: string;
-  team: { name: string };
-  detail?: string;
-}
 
 // ── Timeline compatta ─────────────────────────────────────────
 const MiniTimeline = ({
@@ -23,35 +15,29 @@ const MiniTimeline = ({
   homeTeam,
   minute,
 }: {
-  events: MatchEvent[];
+  events: EventoLive[];
   homeTeam: string;
   minute: number;
 }) => {
   const durata = minute > 90 ? minute : 90;
-  const goals = events.filter(e => e.type === 'Goal' && e.detail !== 'Missed Penalty');
-  const cards = events.filter(e => e.type === 'Card');
-
-  const allEvents = [...goals, ...cards].sort(
-    (a, b) => a.time.elapsed - b.time.elapsed
-  );
+  const goals = events.filter(e => e.type === 'goal' || e.type === 'penalty' || e.type === 'autogoal');
+  const cards = events.filter(e => e.type === 'yellow' || e.type === 'red' || e.type === 'second_yellow');
+  const allEvents = [...goals, ...cards].sort((a, b) => a.minute - b.minute);
 
   return (
     <div style={{ position: 'relative', padding: '12px 0 4px' }}>
-      {/* Linea base */}
       <div style={{
         height: '2px',
         background: 'rgba(255,255,255,0.08)',
         borderRadius: '1px',
         position: 'relative',
       }}>
-        {/* Progresso */}
         <div style={{
           height: '100%',
           width: `${Math.min((minute / durata) * 100, 100)}%`,
           background: 'rgba(255,255,255,0.2)',
           borderRadius: '1px',
         }} />
-        {/* Tick 45' */}
         <div style={{
           position: 'absolute',
           left: `${(45 / durata) * 100}%`,
@@ -60,7 +46,6 @@ const MiniTimeline = ({
           height: '10px',
           background: 'rgba(255,255,255,0.15)',
         }} />
-        {/* Tick 90' se siamo in extra time */}
         {minute > 90 && (
           <div style={{
             position: 'absolute',
@@ -71,32 +56,28 @@ const MiniTimeline = ({
             background: 'rgba(255,255,255,0.15)',
           }} />
         )}
-        {/* Marcatori eventi */}
         {allEvents.map((ev, i) => {
-          const pct = Math.min((ev.time.elapsed / durata) * 100, 99);
-          const isHome = ev.team.name === homeTeam;
-          const isGoal = ev.type === 'Goal';
-          const isRed = ev.detail === 'Red Card' || ev.detail === 'Second Yellow Card';
+          const pct = Math.min((ev.minute / durata) * 100, 99);
+          const isHome = ev.team === homeTeam;
+          const isGoal = ev.type === 'goal' || ev.type === 'penalty' || ev.type === 'autogoal';
+          const isRed = ev.type === 'red' || ev.type === 'second_yellow';
           const icon = isGoal ? '⚽' : isRed ? '🟥' : '🟨';
           const minColor = isGoal
             ? (isHome ? '#EF9F27' : '#378ADD')
             : 'rgba(255,255,255,0.4)';
           return (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                left: `${pct}%`,
-                top: '-10px',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-              }}
-            >
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${pct}%`,
+              top: '-10px',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}>
               <span style={{ fontSize: '11px', lineHeight: 1 }}>{icon}</span>
               <span style={{ fontSize: '9px', color: minColor, marginTop: '1px' }}>
-                {ev.time.elapsed}'
+                {ev.minute}'
               </span>
             </div>
           );
@@ -123,29 +104,19 @@ const LiveCard = ({
     : partita.status === 'NS' ? 'NS'
     : `${partita.minute}'`;
 
-  // Semaforo dominante (il più alto tra home e away)
   const livMax = Math.max(partita.semaforoHome ?? 0, partita.semaforoAway ?? 0);
-  const livTeam = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)
-    ? partita.homeTeam
-    : partita.awayTeam;
-  const livVoto = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)
-    ? partita.votoHome ?? 0
-    : partita.votoAway ?? 0;
-  const livIp10 = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)
-    ? partita.ipHome ?? 0
-    : partita.ipAway ?? 0;
-  const livIp5 = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)
-    ? partita.ipHome5 ?? 0
-    : partita.ipAway5 ?? 0;
-  const livTrend = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)
-    ? partita.trendHome ?? 0
-    : partita.trendAway ?? 0;
+  const useHome = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0);
+  const livTeam  = useHome ? partita.homeTeam : partita.awayTeam;
+  const livVoto  = useHome ? (partita.votoHome ?? 0)   : (partita.votoAway ?? 0);
+  const livIp10  = useHome ? (partita.ipHome ?? 0)     : (partita.ipAway ?? 0);
+  const livIp5   = useHome ? (partita.ipHome5 ?? 0)    : (partita.ipAway5 ?? 0);
+  const livTrend = useHome ? (partita.trendHome ?? 0)  : (partita.trendAway ?? 0);
 
   const semConfig: Record<number, { bg: string; border: string; dot: string; text: string; label: string }> = {
     0: { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', dot: '#888780', text: 'rgba(255,255,255,0.3)', label: 'Nessun segnale' },
-    1: { bg: 'rgba(239,159,39,0.08)', border: 'rgba(239,159,39,0.25)', dot: '#EF9F27', text: '#EF9F27', label: 'LIV.1' },
-    2: { bg: 'rgba(216,90,48,0.08)',  border: 'rgba(216,90,48,0.25)',  dot: '#D85A30', text: '#D85A30', label: 'LIV.2' },
-    3: { bg: 'rgba(99,153,34,0.10)',  border: 'rgba(99,153,34,0.30)',  dot: '#639922', text: '#639922', label: 'LIV.3' },
+    1: { bg: 'rgba(239,159,39,0.08)',  border: 'rgba(239,159,39,0.25)',  dot: '#EF9F27', text: '#EF9F27', label: 'LIV.1' },
+    2: { bg: 'rgba(216,90,48,0.08)',   border: 'rgba(216,90,48,0.25)',   dot: '#D85A30', text: '#D85A30', label: 'LIV.2' },
+    3: { bg: 'rgba(99,153,34,0.10)',   border: 'rgba(99,153,34,0.30)',   dot: '#639922', text: '#639922', label: 'LIV.3' },
   };
   const sem = semConfig[livMax];
 
@@ -168,23 +139,17 @@ const LiveCard = ({
         borderRadius: '16px',
         padding: '12px',
         cursor: 'pointer',
-        transition: 'border-color 0.15s, transform 0.1s',
+        transition: 'transform 0.1s',
       }}
       onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
       onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
     >
-      {/* Header: lega + status | score + minuto */}
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>
-            {partita.homeTeam}
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>
-            {partita.awayTeam}
-          </div>
-          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
-            {partita.league}
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.homeTeam}</div>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.awayTeam}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{partita.league}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#FBBF24', letterSpacing: '2px' }}>
@@ -219,10 +184,10 @@ const LiveCard = ({
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: '5px', marginBottom: '8px' }}>
         {[
-          { label: "IP/10'", val: livIp10.toFixed(2), color: '#fff' },
-          { label: "IP/5'",  val: livIp5.toFixed(2),  color: '#fff' },
+          { label: "IP/10'", val: livIp10.toFixed(2), color: '#fff',          big: false },
+          { label: "IP/5'",  val: livIp5.toFixed(2),  color: '#fff',          big: false },
           { label: 'Trend Δ', val: `${livTrend > 0 ? '+' : ''}${livTrend.toFixed(2)}`, color: trendLabel.color, big: true },
-          { label: 'Voto',    val: livVoto.toFixed(1),  color: votoLabel.color, big: true },
+          { label: 'Voto',    val: livVoto.toFixed(1), color: votoLabel.color, big: true },
         ].map(kpi => (
           <div key={kpi.label} style={{
             background: 'rgba(255,255,255,0.04)',
@@ -237,21 +202,20 @@ const LiveCard = ({
       </div>
 
       {/* Mini timeline */}
-      {partita.events && partita.events.length > 0 && (
+      {partita.events && partita.events.length > 0 ? (
         <MiniTimeline
-          events={partita.events as MatchEvent[]}
+          events={partita.events}
           homeTeam={partita.homeTeam}
           minute={partita.minute ?? 0}
         />
-      )}
-      {(!partita.events || partita.events.length === 0) && isLive && (
+      ) : (
         <div style={{
           height: '2px', background: 'rgba(255,255,255,0.06)',
           borderRadius: '1px', margin: '10px 0 4px',
         }} />
       )}
 
-      {/* Hint click */}
+      {/* Hint */}
       <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', textAlign: 'right', marginTop: '6px' }}>
         tocca per dettaglio →
       </div>
@@ -268,51 +232,39 @@ const ModalDettaglio = ({
   partita: PartitaLive;
   onClose: () => void;
   onRemove: (id: string) => void;
-}) => {
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'flex-start',
-        justifyContent: 'center',
-        padding: '16px',
-        overflowY: 'auto',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: '480px',
-          marginTop: '8px',
-          marginBottom: '8px',
-        }}
-      >
-        {/* Bottone chiudi */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '20px',
-              color: 'rgba(255,255,255,0.6)',
-              padding: '4px 14px',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            ✕ Chiudi
-          </button>
-        </div>
-        {/* LiveMonitor esistente come contenuto del modal */}
-        <LiveMonitor partita={partita} onRemove={(id) => { onRemove(id); onClose(); }} />
+}) => (
+  <div
+    onClick={onClose}
+    style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: '16px',
+      overflowY: 'auto',
+    }}
+  >
+    <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '480px', marginTop: '8px', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '20px',
+            color: 'rgba(255,255,255,0.6)',
+            padding: '4px 14px',
+            fontSize: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          ✕ Chiudi
+        </button>
       </div>
+      <LiveMonitor partita={partita} onRemove={(id) => { onRemove(id); onClose(); }} />
     </div>
-  );
-};
+  </div>
+);
 
 // ── LiveGrid ──────────────────────────────────────────────────
 interface LiveGridProps {
@@ -340,7 +292,6 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
 
   return (
     <>
-      {/* Barra superiore */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>
           {partite.length} partite · {liveCount} live
@@ -361,34 +312,20 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
         </button>
       </div>
 
-      {/* Griglia 2 colonne */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0,1fr))',
-        gap: '10px',
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '10px' }}>
         {partite.map(p => (
-          <LiveCard
-            key={p.fixtureId}
-            partita={p}
-            onClick={() => setModalPartita(p)}
-          />
+          <LiveCard key={p.fixtureId} partita={p} onClick={() => setModalPartita(p)} />
         ))}
       </div>
 
-      {/* Modal */}
       {modalPartita && (
         <ModalDettaglio
           partita={modalPartita}
           onClose={() => setModalPartita(null)}
-          onRemove={(id) => {
-            onRemove(id);
-            setModalPartita(null);
-          }}
+          onRemove={(id) => { onRemove(id); setModalPartita(null); }}
         />
       )}
 
-      {/* Keyframe pulse per dot live */}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
     </>
   );
