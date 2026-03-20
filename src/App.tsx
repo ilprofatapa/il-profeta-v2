@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { getPartiteMonitor, aggiungiPartita } from './services/sheetsService';
+import { getPartiteMonitor, aggiungiPartita, rimuoviPartita } from './services/sheetsService';
 import type { PartitaLive } from './services/sheetsService';
 import LiveGrid from './components/LiveGrid';
 import PreMatch from './components/PreMatch';
@@ -120,8 +120,7 @@ export default function App() {
                 partite={partite}
                 onRefresh={caricaDati}
                 onRemove={async (id) => {
-                  // se hai una funzione rimozionePartita in sheetsService, chiamala qui
-                  // altrimenti semplicemente ricarica
+                  await rimuoviPartita(id);
                   await caricaDati();
                 }}
               />
