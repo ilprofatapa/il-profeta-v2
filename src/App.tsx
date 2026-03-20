@@ -1,7 +1,7 @@
 // ============================================================
 // IL PROFETA v2 — App.tsx
 // Root — tab Pre-Match + Live Monitor
-// v2.3.0
+// v2.4.0
 // ============================================================
 
 import { useState, useEffect } from 'react';
@@ -12,14 +12,15 @@ import LiveMonitor from './components/LiveMonitor';
 import PreMatch from './components/PreMatch';
 
 type Tab = 'prematch' | 'live';
+type ViewMode = 'grid' | 'full';
 
 export default function App() {
   const [partite, setPartite] = useState<PartitaLive[]>([]);
   const [loading, setLoading] = useState(true);
   const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('prematch');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
-  // ── Polling ogni 30 secondi ──────────────────────────────
   useEffect(() => {
     caricaDati();
     const intervallo = setInterval(caricaDati, 30000);
@@ -47,6 +48,11 @@ export default function App() {
   ) => {
     await aggiungiPartita(fixtureId, homeTeam, awayTeam, kickoff, league);
     setActiveTab('live');
+    await caricaDati();
+  };
+
+  const handleRemove = async (id: string) => {
+    await rimuoviPartita(id);
     await caricaDati();
   };
 
@@ -117,14 +123,71 @@ export default function App() {
                 <p>Caricamento...</p>
               </div>
             ) : (
-              <LiveGrid
-                partite={partite}
-                onRefresh={caricaDati}
-                onRemove={async (id) => {
-                  await rimuoviPartita(id);
-                  await caricaDati();
-                }}
-              />
+              <>
+                {/* Toggle vista */}
+                <div className="flex justify-end mb-3">
+                  <div className="flex gap-1 bg-gray-900/60 rounded-xl p-1 border border-gray-800/50">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                        viewMode === 'grid'
+                          ? 'bg-yellow-500 text-gray-950'
+                          : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      ⊞ Griglia
+                    </button>
+                    <button
+                      onClick={() => setViewMode('full')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                        viewMode === 'full'
+                          ? 'bg-yellow-500 text-gray-950'
+                          : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      ☰ Completa
+                    </button>
+                  </div>
+                </div>
+
+                {/* Vista griglia */}
+                {viewMode === 'grid' && (
+                  <LiveGrid
+                    partite={partite}
+                    onRefresh={caricaDati}
+                    onRemove={handleRemove}
+                  />
+                )}
+
+                {/* Vista completa */}
+                {viewMode === 'full' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={caricaDati}
+                        className="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded-xl bg-gray-900/60 border border-gray-800/50 transition-all"
+                      >
+                        🔄 Aggiorna
+                      </button>
+                    </div>
+                    {partite.length === 0 ? (
+                      <div className="text-center text-gray-500 mt-10">
+                        <p className="text-2xl mb-2">📭</p>
+                        <p>Nessuna partita nel monitor</p>
+                        <p className="text-xs mt-1 text-gray-600">Aggiungile dalla tab Pre-Match</p>
+                      </div>
+                    ) : (
+                      partite.map(p => (
+                        <LiveMonitor
+                          key={p.fixtureId}
+                          partita={p}
+                          onRemove={handleRemove}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
