@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { getPartiteMonitor, aggiungiPartita, rimuoviPartita } from './services/sheetsService';
 import type { PartitaLive } from './services/sheetsService';
 import LiveGrid from './components/LiveGrid';
+import LiveMonitor from './components/LiveMonitor';
 import PreMatch from './components/PreMatch';
 
 type Tab = 'prematch' | 'live';
