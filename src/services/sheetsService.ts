@@ -52,9 +52,10 @@ export interface PartitaLive {
     semaforoAway: number;
     votoHome: number;
     votoAway: number;
-    league: string;
+   league: string;
+    kickoff?: string;
     stats?: PartitaStats;
-     events?: EventoLive[];
+    events?: EventoLive[];
 }
 
 export interface PartitaDisponibile {
