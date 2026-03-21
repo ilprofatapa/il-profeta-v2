@@ -345,11 +345,19 @@ const LegheExtraPanel = ({
 // ── PreMatch principale ───────────────────────────────────────
 const PreMatch = ({
     onAddToMonitor,
+    partiteEsterne,
+    onPartiteChange,
+    dataEsterna,
+    onDataChange,
 }: {
     onAddToMonitor: (fixtureId: string, homeTeam: string, awayTeam: string, kickoff: string, league: string) => void;
+    partiteEsterne: PartitaPrematch[];
+    onPartiteChange: (p: PartitaPrematch[]) => void;
+    dataEsterna: string;
+    onDataChange: (d: string) => void;
 }) => {
-    const [date, setDate]                   = useState(() => new Date().toISOString().split('T')[0]);
-    const [partite, setPartite]             = useState<PartitaPrematch[]>([]);
+    const [date, setDate]                   = useState(dataEsterna);
+    const [partite, setPartite]             = useState<PartitaPrematch[]>(partiteEsterne);
     const [loading, setLoading]             = useState(false);
     const [processing, setProcessing]       = useState(false);
     const [showLeghePanel, setShowLeghePanel] = useState(false);
@@ -358,6 +366,8 @@ const PreMatch = ({
      const [ordinamento, setOrdinamento] = useState<'voto' | 'lega' | 'orario'>('voto');
     const [analisiPartita, setAnalisiPartita] = useState<PartitaPrematch | null>(null);
     const [pollingRef, setPollingRef]       = useState<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => { onDataChange(date); }, [date]);
+    useEffect(() => { onPartiteChange(partite); }, [partite]);
 
     const areeDisponibili = ['Tutte', 'Europa', 'Sud America', 'Nord America', 'Asia'];
 
