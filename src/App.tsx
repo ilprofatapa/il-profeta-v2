@@ -20,6 +20,8 @@ export default function App() {
   const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('prematch');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [partitePrematch, setPartitePrematch] = useState<import('./services/sheetsService').PartitaPrematch[]>([]);
+  const [dataPrematch, setDataPrematch] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     caricaDati();
@@ -109,9 +111,15 @@ export default function App() {
       <main className="p-4 max-w-6xl mx-auto mt-4">
 
         {/* TAB PRE-MATCH */}
-        {activeTab === 'prematch' && (
-          <PreMatch onAddToMonitor={handleAddToMonitor} />
-        )}
+        <div style={{ display: activeTab === 'prematch' ? 'block' : 'none' }}>
+          <PreMatch
+            onAddToMonitor={handleAddToMonitor}
+            partiteEsterne={partitePrematch}
+            onPartiteChange={setPartitePrematch}
+            dataEsterna={dataPrematch}
+            onDataChange={setDataPrematch}
+          />
+        </div>
 
         {/* TAB LIVE */}
         {activeTab === 'live' && (
