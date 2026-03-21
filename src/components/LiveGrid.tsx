@@ -1,37 +1,38 @@
 // ============================================================
 // IL PROFETA v2 — components/LiveGrid.tsx
 // Griglia 2 colonne partite live con modal dettaglio
-// v2.4.1 — colori semantici completi
+// v2.4.2 — grafico IP/10' e IP/5'
 // ============================================================
 
-import { useState } from 'react';
-import type { PartitaLive, EventoLive } from '../services/sheetsService';
+import { useState, useEffect } from 'react';
+import type { PartitaLive, EventoLive, SnapshotGrafico } from '../services/sheetsService';
+import { getTrendLabel, getVotoLabel, getSnapshotsGrafico } from '../services/sheetsService';
 import LiveMonitor from './LiveMonitor';
 
-// ── Conversione classi Tailwind → hex ─────────────────────────
+// ── Conversione colori ────────────────────────────────────────
 const trendColor = (delta: number): string => {
-  if (delta >= 0.20) return '#F87171'; // text-red-400
-  if (delta >= 0.15) return '#FB923C'; // text-orange-400
-  if (delta >= 0.10) return '#FACC15'; // text-yellow-400
-  if (delta >= 0.05) return '#9CA3AF'; // text-gray-400
-  if (delta >= 0)    return '#4B5563'; // text-gray-600
-  return '#60A5FA';                    // text-blue-400
+  if (delta >= 0.20) return '#F87171';
+  if (delta >= 0.15) return '#FB923C';
+  if (delta >= 0.10) return '#FACC15';
+  if (delta >= 0.05) return '#9CA3AF';
+  if (delta >= 0)    return '#4B5563';
+  return '#60A5FA';
 };
 
 const votoColor = (v: number): string => {
-  if (v >= 4.5) return '#F87171'; // text-red-400
-  if (v >= 3.5) return '#FB923C'; // text-orange-400
-  if (v >= 2.5) return '#FACC15'; // text-yellow-400
-  if (v >= 1.5) return '#9CA3AF'; // text-gray-400
-  return '#4B5563';               // text-gray-600
+  if (v >= 4.5) return '#F87171';
+  if (v >= 3.5) return '#FB923C';
+  if (v >= 2.5) return '#FACC15';
+  if (v >= 1.5) return '#9CA3AF';
+  return '#4B5563';
 };
 
 const ipColor = (ip: number): string => {
-  if (ip >= 0.55) return '#F87171'; // rosso — soglia LIV.3
-  if (ip >= 0.45) return '#FB923C'; // arancio — soglia LIV.2
-  if (ip >= 0.35) return '#FACC15'; // giallo — soglia LIV.1
-  if (ip > 0.20)  return '#9CA3AF'; // grigio chiaro — presente ma sotto soglia
-  return '#4B5563';                 // grigio scuro — piatto
+  if (ip >= 0.55) return '#F87171';
+  if (ip >= 0.45) return '#FB923C';
+  if (ip >= 0.35) return '#FACC15';
+  if (ip > 0.20)  return '#9CA3AF';
+  return '#4B5563';
 };
 
 const cardBorderColor = (isLive: boolean, livMax: number): string => {
@@ -42,7 +43,6 @@ const cardBorderColor = (isLive: boolean, livMax: number): string => {
   return 'rgba(255,255,255,0.08)';
 };
 
-// ── Configurazione semaforo ───────────────────────────────────
 const semConfig: Record<number, { bg: string; border: string; dot: string; text: string; label: string }> = {
   0: { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', dot: '#6B7280', text: 'rgba(255,255,255,0.3)', label: 'Nessun segnale' },
   1: { bg: 'rgba(250,204,21,0.08)',  border: 'rgba(250,204,21,0.30)',  dot: '#FACC15', text: '#FACC15', label: 'LIV.1' },
@@ -50,70 +50,141 @@ const semConfig: Record<number, { bg: string; border: string; dot: string; text:
   3: { bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.30)',  dot: '#34D399', text: '#34D399', label: 'LIV.3' },
 };
 
+// ── Mini grafico SVG ──────────────────────────────────────────
+const MiniGrafico = ({
+  snapshots,
+  useHome,
+}: {
+  snapshots: SnapshotGrafico[];
+  useHome: boolean;
+}) => {
+  if (snapshots.length < 2) {
+    return (
+      <div style={{
+        height: '48px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '10px', color: 'rgba(255,255,255,0.2)',
+      }}>
+        dati insufficienti
+      </div>
+    );
+  }
+
+  const ip10vals = snapshots.map(s => useHome ? s.ipHome10 : s.ipAway10);
+  const ip5vals  = snapshots.map(s => useHome ? s.ipHome5  : s.ipAway5);
+  const allVals  = [...ip10vals, ...ip5vals];
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals, 0.1);
+  const range = maxV - minV || 0.1;
+
+  const W = 200;
+  const H = 48;
+  const pad = 4;
+
+  const toX = (i: number) => pad + (i / (snapshots.length - 1)) * (W - pad * 2);
+  const toY = (v: number) => H - pad - ((v - minV) / range) * (H - pad * 2);
+
+  const linePath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+
+  // Soglie orizzontali
+  const soglie = [
+    { v: 0.35, color: 'rgba(250,204,21,0.3)' },
+    { v: 0.45, color: 'rgba(251,146,60,0.3)' },
+    { v: 0.55, color: 'rgba(52,211,153,0.3)' },
+  ];
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)' }}>Trend IP ultimi 30'</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <span style={{ fontSize: '9px', color: '#FACC15' }}>— IP/10'</span>
+          <span style={{ fontSize: '9px', color: '#60A5FA' }}>— IP/5'</span>
+        </div>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', height: '48px', display: 'block' }}
+        preserveAspectRatio="none"
+      >
+        {/* Soglie */}
+        {soglie.map((s, i) => {
+          const y = toY(s.v);
+          if (y < 0 || y > H) return null;
+          return (
+            <line
+              key={i}
+              x1={pad} y1={y} x2={W - pad} y2={y}
+              stroke={s.color} strokeWidth="0.5" strokeDasharray="3,3"
+            />
+          );
+        })}
+        {/* IP/10' giallo */}
+        <path
+          d={linePath(ip10vals)}
+          fill="none"
+          stroke="#FACC15"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {/* IP/5' blu */}
+        <path
+          d={linePath(ip5vals)}
+          fill="none"
+          stroke="#60A5FA"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {/* Punto finale IP/10' */}
+        <circle
+          cx={toX(snapshots.length - 1)}
+          cy={toY(ip10vals[ip10vals.length - 1])}
+          r="2.5" fill="#FACC15"
+        />
+        {/* Punto finale IP/5' */}
+        <circle
+          cx={toX(snapshots.length - 1)}
+          cy={toY(ip5vals[ip5vals.length - 1])}
+          r="2.5" fill="#60A5FA"
+        />
+      </svg>
+    </div>
+  );
+};
+
 // ── Timeline compatta ─────────────────────────────────────────
 const MiniTimeline = ({
-  events,
-  homeTeam,
-  minute,
+  events, homeTeam, minute,
 }: {
   events: EventoLive[];
   homeTeam: string;
   minute: number;
 }) => {
   const durata = minute > 90 ? minute : 90;
-  const goals = events.filter(e => e.type === 'goal' || e.type === 'penalty' || e.type === 'autogoal');
-  const cards = events.filter(e => e.type === 'yellow' || e.type === 'red' || e.type === 'second_yellow');
+  const goals  = events.filter(e => e.type === 'goal' || e.type === 'penalty' || e.type === 'autogoal');
+  const cards  = events.filter(e => e.type === 'yellow' || e.type === 'red' || e.type === 'second_yellow');
   const allEvents = [...goals, ...cards].sort((a, b) => a.minute - b.minute);
 
   return (
-    <div style={{ position: 'relative', padding: '12px 0 4px' }}>
-      <div style={{
-        height: '2px',
-        background: 'rgba(255,255,255,0.08)',
-        borderRadius: '1px',
-        position: 'relative',
-      }}>
-        <div style={{
-          height: '100%',
-          width: `${Math.min((minute / durata) * 100, 100)}%`,
-          background: 'rgba(255,255,255,0.15)',
-          borderRadius: '1px',
-        }} />
-        {/* Tick 45' */}
-        <div style={{
-          position: 'absolute',
-          left: `${(45 / durata) * 100}%`,
-          top: '-4px', width: '1px', height: '10px',
-          background: 'rgba(255,255,255,0.15)',
-        }} />
-        {/* Tick 90' se extra time */}
+    <div style={{ position: 'relative', padding: '10px 0 4px' }}>
+      <div style={{ height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '1px', position: 'relative' }}>
+        <div style={{ height: '100%', width: `${Math.min((minute / durata) * 100, 100)}%`, background: 'rgba(255,255,255,0.15)', borderRadius: '1px' }} />
+        <div style={{ position: 'absolute', left: `${(45 / durata) * 100}%`, top: '-4px', width: '1px', height: '10px', background: 'rgba(255,255,255,0.15)' }} />
         {minute > 90 && (
-          <div style={{
-            position: 'absolute',
-            left: `${(90 / durata) * 100}%`,
-            top: '-4px', width: '1px', height: '10px',
-            background: 'rgba(255,255,255,0.15)',
-          }} />
+          <div style={{ position: 'absolute', left: `${(90 / durata) * 100}%`, top: '-4px', width: '1px', height: '10px', background: 'rgba(255,255,255,0.15)' }} />
         )}
         {allEvents.map((ev, i) => {
-          const pct = Math.min((ev.minute / durata) * 100, 99);
-          const isHome = ev.team === homeTeam;
-          const isGoal = ev.type === 'goal' || ev.type === 'penalty' || ev.type === 'autogoal';
-          const isRed  = ev.type === 'red' || ev.type === 'second_yellow';
-          const icon   = isGoal ? '⚽' : isRed ? '🟥' : '🟨';
-          const minColor = isGoal
-            ? (isHome ? '#FACC15' : '#60A5FA')
-            : 'rgba(255,255,255,0.35)';
+          const pct      = Math.min((ev.minute / durata) * 100, 99);
+          const isHome   = ev.team === homeTeam;
+          const isGoal   = ev.type === 'goal' || ev.type === 'penalty' || ev.type === 'autogoal';
+          const isRed    = ev.type === 'red' || ev.type === 'second_yellow';
+          const icon     = isGoal ? '⚽' : isRed ? '🟥' : '🟨';
+          const minColor = isGoal ? (isHome ? '#FACC15' : '#60A5FA') : 'rgba(255,255,255,0.35)';
           return (
-            <div key={i} style={{
-              position: 'absolute',
-              left: `${pct}%`,
-              top: '-10px',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}>
+            <div key={i} style={{ position: 'absolute', left: `${pct}%`, top: '-10px', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', lineHeight: 1 }}>{icon}</span>
               <span style={{ fontSize: '9px', color: minColor, marginTop: '1px' }}>{ev.minute}'</span>
             </div>
@@ -126,64 +197,44 @@ const MiniTimeline = ({
 
 // ── Card singola ──────────────────────────────────────────────
 const LiveCard = ({
-  partita,
-  onClick,
+  partita, onClick,
 }: {
   partita: PartitaLive;
   onClick: () => void;
 }) => {
+  const [snapshots, setSnapshots] = useState<SnapshotGrafico[]>([]);
+
   const isLive = partita.status === '1H' || partita.status === '2H';
   const isHT   = partita.status === 'HT';
   const isFT   = partita.status === 'FT';
 
-  const statusLabel = isHT ? 'HT'
-    : isFT ? 'FT'
-    : partita.status === 'NS' ? 'NS'
-    : `${partita.minute}'`;
+  const statusLabel = isHT ? 'HT' : isFT ? 'FT' : partita.status === 'NS' ? 'NS' : `${partita.minute}'`;
 
-  // Team con segnale dominante
   const useHome  = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0);
   const livMax   = Math.max(partita.semaforoHome ?? 0, partita.semaforoAway ?? 0);
-  const livTeam  = useHome ? partita.homeTeam      : partita.awayTeam;
+  const livTeam  = useHome ? partita.homeTeam       : partita.awayTeam;
   const livVoto  = useHome ? (partita.votoHome  ?? 0) : (partita.votoAway  ?? 0);
   const livIp10  = useHome ? (partita.ipHome    ?? 0) : (partita.ipAway    ?? 0);
   const livIp5   = useHome ? (partita.ipHome5   ?? 0) : (partita.ipAway5   ?? 0);
   const livTr10  = useHome ? (partita.trendHome ?? 0) : (partita.trendAway ?? 0);
   const livTr5   = useHome ? (partita.trendHome5 ?? 0) : (partita.trendAway5 ?? 0);
 
-  const sem = semConfig[livMax];
+  const sem        = semConfig[livMax];
+  const trendLabel = getTrendLabel(livTr10);
+  const votoLabel  = getVotoLabel(livVoto);
+
+  // Carica snapshots per il grafico
+  useEffect(() => {
+    if (!isLive) return;
+    getSnapshotsGrafico(partita.fixtureId).then(setSnapshots);
+  }, [partita.fixtureId, partita.minute, isLive]);
 
   const kpis = [
-    {
-      label: "IP/10'",
-      val: livIp10.toFixed(2),
-      color: ipColor(livIp10),
-      big: false,
-    },
-    {
-      label: "IP/5'",
-      val: livIp5.toFixed(2),
-      color: ipColor(livIp5),
-      big: false,
-    },
-    {
-      label: "Trend/10'",
-      val: `${livTr10 > 0 ? '+' : ''}${livTr10.toFixed(2)}`,
-      color: trendColor(livTr10),
-      big: true,
-    },
-    {
-      label: "Trend/5'",
-      val: `${livTr5 > 0 ? '+' : ''}${livTr5.toFixed(2)}`,
-      color: trendColor(livTr5),
-      big: true,
-    },
-    {
-      label: 'Voto',
-      val: livVoto.toFixed(1),
-      color: votoColor(livVoto),
-      big: true,
-    },
+    { label: "IP/10'",   val: livIp10.toFixed(2), color: ipColor(livIp10),        big: false },
+    { label: "IP/5'",    val: livIp5.toFixed(2),  color: ipColor(livIp5),         big: false },
+    { label: "Trend/10'", val: `${livTr10 > 0 ? '+' : ''}${livTr10.toFixed(2)}`, color: trendColor(livTr10), big: true },
+    { label: "Trend/5'",  val: `${livTr5 > 0 ? '+' : ''}${livTr5.toFixed(2)}`,  color: trendColor(livTr5),  big: true },
+    { label: 'Voto',     val: livVoto.toFixed(1), color: votoColor(livVoto),       big: true },
   ];
 
   return (
@@ -192,15 +243,13 @@ const LiveCard = ({
       style={{
         background: '#111827',
         border: `1px solid ${cardBorderColor(isLive, livMax)}`,
-        borderRadius: '16px',
-        padding: '12px',
-        cursor: 'pointer',
+        borderRadius: '16px', padding: '12px', cursor: 'pointer',
         transition: 'transform 0.1s',
       }}
       onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
       onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
     >
-      {/* Header: squadre + score */}
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.homeTeam}</div>
@@ -212,13 +261,7 @@ const LiveCard = ({
             {partita.scoreHome} – {partita.scoreAway}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', marginTop: '2px' }}>
-            {isLive && (
-              <span style={{
-                width: '5px', height: '5px', borderRadius: '50%',
-                background: '#EF4444', display: 'inline-block',
-                animation: 'livepulse 1.5s infinite',
-              }} />
-            )}
+            {isLive && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'livepulse 1.5s infinite' }} />}
             <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{statusLabel}</span>
           </div>
         </div>
@@ -237,13 +280,10 @@ const LiveCard = ({
         </span>
       </div>
 
-      {/* KPI row: 5 metriche su 2 righe */}
+      {/* KPI: 3 + 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '4px', marginBottom: '4px' }}>
         {kpis.slice(0, 3).map(kpi => (
-          <div key={kpi.label} style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '8px', padding: '5px 4px', textAlign: 'center',
-          }}>
+          <div key={kpi.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '5px 4px', textAlign: 'center' }}>
             <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginBottom: '3px' }}>{kpi.label}</div>
             <div style={{ fontSize: kpi.big ? '14px' : '13px', fontWeight: 700, color: kpi.color }}>{kpi.val}</div>
           </div>
@@ -251,28 +291,23 @@ const LiveCard = ({
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '4px', marginBottom: '8px' }}>
         {kpis.slice(3).map(kpi => (
-          <div key={kpi.label} style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '8px', padding: '5px 4px', textAlign: 'center',
-          }}>
+          <div key={kpi.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '5px 4px', textAlign: 'center' }}>
             <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginBottom: '3px' }}>{kpi.label}</div>
             <div style={{ fontSize: kpi.big ? '14px' : '13px', fontWeight: 700, color: kpi.color }}>{kpi.val}</div>
           </div>
         ))}
       </div>
 
-      {/* Mini timeline */}
+      {/* Grafico IP */}
+      {isLive && (
+        <MiniGrafico snapshots={snapshots} useHome={useHome} />
+      )}
+
+      {/* Timeline */}
       {partita.events && partita.events.length > 0 ? (
-        <MiniTimeline
-          events={partita.events}
-          homeTeam={partita.homeTeam}
-          minute={partita.minute ?? 0}
-        />
+        <MiniTimeline events={partita.events} homeTeam={partita.homeTeam} minute={partita.minute ?? 0} />
       ) : (
-        <div style={{
-          height: '2px', background: 'rgba(255,255,255,0.05)',
-          borderRadius: '1px', margin: '8px 0 4px',
-        }} />
+        <div style={{ height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '1px', margin: '8px 0 4px' }} />
       )}
 
       {/* Hint */}
@@ -285,9 +320,7 @@ const LiveCard = ({
 
 // ── Modal dettaglio ───────────────────────────────────────────
 const ModalDettaglio = ({
-  partita,
-  onClose,
-  onRemove,
+  partita, onClose, onRemove,
 }: {
   partita: PartitaLive;
   onClose: () => void;
@@ -299,23 +332,16 @@ const ModalDettaglio = ({
       position: 'fixed', inset: 0, zIndex: 50,
       background: 'rgba(0,0,0,0.80)',
       display: 'flex', alignItems: 'flex-start',
-      justifyContent: 'center',
-      padding: '16px',
-      overflowY: 'auto',
+      justifyContent: 'center', padding: '16px', overflowY: 'auto',
     }}
   >
-    <div onClick={e => e.stopPropagation()} style={{
-      width: '100%', maxWidth: '480px',
-      marginTop: '8px', marginBottom: '8px',
-    }}>
+    <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '480px', marginTop: '8px', marginBottom: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
         <button
           onClick={onClose}
           style={{
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '20px',
-            color: 'rgba(255,255,255,0.6)',
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '20px', color: 'rgba(255,255,255,0.6)',
             padding: '4px 14px', fontSize: '12px', cursor: 'pointer',
           }}
         >✕ Chiudi</button>
@@ -340,9 +366,7 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
       <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', marginTop: '48px' }}>
         <p style={{ fontSize: '32px', marginBottom: '8px' }}>📭</p>
         <p style={{ fontSize: '14px' }}>Nessuna partita nel monitor</p>
-        <p style={{ fontSize: '12px', marginTop: '4px', color: 'rgba(255,255,255,0.15)' }}>
-          Aggiungile dalla tab Pre-Match
-        </p>
+        <p style={{ fontSize: '12px', marginTop: '4px', color: 'rgba(255,255,255,0.15)' }}>Aggiungile dalla tab Pre-Match</p>
       </div>
     );
   }
@@ -358,10 +382,8 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
         <button
           onClick={onRefresh}
           style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: '12px',
-            color: 'rgba(255,255,255,0.4)',
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: '12px', color: 'rgba(255,255,255,0.4)',
             padding: '4px 12px', fontSize: '11px', cursor: 'pointer',
           }}
         >🔄 Aggiorna</button>
