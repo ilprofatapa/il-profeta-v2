@@ -114,8 +114,78 @@ const DualWindowGrid = ({
     );
 };
 
+// ── Colore IP dinamico ────────────────────────────────────────
+const ipColorHex = (ip: number): string => {
+  if (ip >= 0.55) return '#F87171';
+  if (ip >= 0.45) return '#FB923C';
+  if (ip >= 0.35) return '#FACC15';
+  if (ip > 0.20)  return '#9CA3AF';
+  return '#4B5563';
+};
+
+// ── Grafico singola squadra ───────────────────────────────────
+const GraficoSquadra = ({
+  label, ip10vals, ip5vals,
+}: {
+  label: string;
+  ip10vals: number[];
+  ip5vals: number[];
+}) => {
+  if (ip10vals.length < 2) return (
+    <div className="flex-1 bg-gray-800/40 rounded-xl p-2 text-center">
+      <div className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-[9px] text-gray-700">dati insufficienti</div>
+    </div>
+  );
+
+  const currentIp10 = ip10vals[ip10vals.length - 1];
+  const currentIp5  = ip5vals[ip5vals.length - 1];
+  const colorIp10   = ipColorHex(currentIp10);
+  const colorIp5    = ipColorHex(currentIp5);
+
+  const allVals = [...ip10vals, ...ip5vals];
+  const minV    = Math.min(...allVals);
+  const maxV    = Math.max(...allVals, 0.1);
+  const range   = maxV - minV || 0.1;
+
+  const W = 140; const H = 70; const pad = 6;
+  const toX = (i: number) => pad + (i / (ip10vals.length - 1)) * (W - pad * 2);
+  const toY = (v: number) => H - pad - ((v - minV) / range) * (H - pad * 2);
+  const linePath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+
+  const soglie = [
+    { v: 0.35, color: 'rgba(250,204,21,0.25)' },
+    { v: 0.45, color: 'rgba(251,146,60,0.25)' },
+    { v: 0.55, color: 'rgba(52,211,153,0.25)' },
+  ];
+
+  return (
+    <div className="flex-1 bg-gray-800/40 rounded-xl p-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[8px] text-gray-500 uppercase tracking-widest truncate">{label}</span>
+        <div className="flex gap-2 shrink-0">
+          <span style={{ fontSize: '9px', color: colorIp10 }}>10'</span>
+          <span style={{ fontSize: '9px', color: colorIp5 }}>5'</span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '70px' }} preserveAspectRatio="none">
+        {soglie.map((s, i) => {
+          const y = toY(s.v);
+          if (y < 0 || y > H) return null;
+          return <line key={i} x1={pad} y1={y} x2={W - pad} y2={y} stroke={s.color} strokeWidth="0.5" strokeDasharray="3,3" />;
+        })}
+        <path d={linePath(ip10vals)} fill="none" stroke={colorIp10} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={linePath(ip5vals)}  fill="none" stroke={colorIp5}  strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="4,2" />
+        <circle cx={toX(ip10vals.length - 1)} cy={toY(currentIp10)} r="2.5" fill={colorIp10} />
+        <circle cx={toX(ip5vals.length - 1)}  cy={toY(currentIp5)}  r="2.5" fill={colorIp5} />
+      </svg>
+    </div>
+  );
+};
+
 // ── Grafico IP esteso ─────────────────────────────────────────
-const GraficoIP = ({ fixtureId, useHome }: { fixtureId: string; useHome: boolean }) => {
+const GraficoIP = ({ fixtureId, homeTeam, awayTeam }: { fixtureId: string; homeTeam: string; awayTeam: string }) => {
   const [snapshots, setSnapshots] = useState<SnapshotGrafico[]>([]);
 
   useEffect(() => {
@@ -124,54 +194,23 @@ const GraficoIP = ({ fixtureId, useHome }: { fixtureId: string; useHome: boolean
 
   if (snapshots.length < 2) return null;
 
-  const ip10vals = snapshots.map(s => useHome ? s.ipHome10 : s.ipAway10);
-  const ip5vals  = snapshots.map(s => useHome ? s.ipHome5  : s.ipAway5);
-  const allVals  = [...ip10vals, ...ip5vals];
-  const minV     = Math.min(...allVals);
-  const maxV     = Math.max(...allVals, 0.1);
-  const range    = maxV - minV || 0.1;
-
-  const W = 300; const H = 80; const pad = 8;
-  const toX = (i: number) => pad + (i / (snapshots.length - 1)) * (W - pad * 2);
-  const toY = (v: number) => H - pad - ((v - minV) / range) * (H - pad * 2);
-  const linePath = (vals: number[]) =>
-    vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
-
-  const soglie = [
-    { v: 0.35, label: 'L1', color: 'rgba(250,204,21,0.4)' },
-    { v: 0.45, label: 'L2', color: 'rgba(251,146,60,0.4)' },
-    { v: 0.55, label: 'L3', color: 'rgba(52,211,153,0.4)'  },
-  ];
+  const ip10Home = snapshots.map(s => s.ipHome10);
+  const ip5Home  = snapshots.map(s => s.ipHome5);
+  const ip10Away = snapshots.map(s => s.ipAway10);
+  const ip5Away  = snapshots.map(s => s.ipAway5);
 
   return (
     <div className="bg-gray-800/40 rounded-2xl p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[8px] uppercase tracking-widest text-gray-600">Trend IP — ultimi 30'</span>
-        <div className="flex gap-3">
-          <span className="text-[9px] text-yellow-400">— IP/10'</span>
-          <span className="text-[9px] text-blue-400">— IP/5'</span>
-        </div>
+      <div className="text-[8px] uppercase tracking-widest text-gray-600 mb-2 text-center">
+        Trend IP — ultimi 30' &nbsp;·&nbsp; <span style={{ borderBottom: '1px solid #9CA3AF' }}>IP/10'</span> &nbsp; <span style={{ borderBottom: '1px dashed #9CA3AF' }}>IP/5'</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '80px' }} preserveAspectRatio="none">
-        {soglie.map((s, i) => {
-          const y = toY(s.v);
-          if (y < 0 || y > H) return null;
-          return (
-            <g key={i}>
-              <line x1={pad} y1={y} x2={W - pad} y2={y} stroke={s.color} strokeWidth="0.8" strokeDasharray="4,4" />
-              <text x={W - pad + 2} y={y + 3} fontSize="7" fill={s.color}>{s.label}</text>
-            </g>
-          );
-        })}
-        <path d={linePath(ip10vals)} fill="none" stroke="#FACC15" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={linePath(ip5vals)}  fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={toX(snapshots.length - 1)} cy={toY(ip10vals[ip10vals.length - 1])} r="3" fill="#FACC15" />
-        <circle cx={toX(snapshots.length - 1)} cy={toY(ip5vals[ip5vals.length - 1])}  r="3" fill="#60A5FA" />
-      </svg>
+      <div className="flex gap-2">
+        <GraficoSquadra label={homeTeam} ip10vals={ip10Home} ip5vals={ip5Home} />
+        <GraficoSquadra label={awayTeam} ip10vals={ip10Away} ip5vals={ip5Away} />
+      </div>
     </div>
   );
 };
-
 
 // ── LiveMonitor ───────────────────────────────────────────────
 interface LiveMonitorProps {
@@ -338,7 +377,8 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
             {showStats && isLive && (
               <GraficoIP
                 fixtureId={partita.fixtureId}
-                useHome={(partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)}
+                homeTeam={partita.homeTeam}
+                awayTeam={partita.awayTeam}
               />
             )}
 
