@@ -222,6 +222,19 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                     >✕</button>
                 </div>
             </div>
+            
+{/* Card NS — partita non iniziata */}
+            {partita.status === 'NS' && (
+                <div className="flex items-center justify-between bg-gray-800/40 rounded-2xl px-4 py-3">
+                    <span className="text-sm font-black text-white">
+                        {partita.homeTeam}
+                    </span>
+                    <span className="text-xs text-gray-600 font-bold">vs</span>
+                    <span className="text-sm font-black text-white">
+                        {partita.awayTeam}
+                    </span>
+                </div>
+            )}
 
             {/* Card ristretta FT */}
             {isFT && !showFtStats && (
