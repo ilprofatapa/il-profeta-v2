@@ -25,7 +25,7 @@ export default function App() {
 
   useEffect(() => {
     caricaDati();
-    const intervallo = setInterval(caricaDati, 30000);
+    const intervallo = setInterval(caricaDati, 10000);
     return () => clearInterval(intervallo);
   }, []);
 
