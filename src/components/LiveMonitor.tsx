@@ -374,7 +374,7 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
             )}
             
            {/* Grafico IP */}
-            {showStats && isLive && (
+           {showStats && (isLive || isHT) && (
               <GraficoIP
                 fixtureId={partita.fixtureId}
                 homeTeam={partita.homeTeam}
