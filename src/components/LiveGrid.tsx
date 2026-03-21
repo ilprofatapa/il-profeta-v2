@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PartitaLive, EventoLive, SnapshotGrafico } from '../services/sheetsService';
-import { getTrendLabel, getVotoLabel, getSnapshotsGrafico } from '../services/sheetsService';
+import { getSnapshotsGrafico } from '../services/sheetsService';
 import LiveMonitor from './LiveMonitor';
 
 // ── Conversione colori ────────────────────────────────────────
@@ -220,8 +220,7 @@ const LiveCard = ({
   const livTr5   = useHome ? (partita.trendHome5 ?? 0) : (partita.trendAway5 ?? 0);
 
   const sem        = semConfig[livMax];
-  const trendLabel = getTrendLabel(livTr10);
-  const votoLabel  = getVotoLabel(livVoto);
+  // colori calcolati direttamente tramite le funzioni locali
 
   // Carica snapshots per il grafico
   useEffect(() => {
