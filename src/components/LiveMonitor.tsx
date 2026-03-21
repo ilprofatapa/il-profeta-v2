@@ -3,15 +3,10 @@
 // v2.3.0 — Dual window IP/10' + IP/5'
 // ============================================================
 
-import { useState } from 'react';
-import type { PartitaLive } from '../services/sheetsService';
-import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
-import TimelineBar from './TimelineBar';
-
 import { useState, useEffect } from 'react';
-import type { SnapshotGrafico } from '../services/sheetsService';
-import { getSnapshotsGrafico } from '../services/sheetsService';
-
+import type { PartitaLive, SnapshotGrafico } from '../services/sheetsService';
+import { getTrendLabel, getVotoLabel, semaforoEmoji, getSnapshotsGrafico } from '../services/sheetsService';
+import TimelineBar from './TimelineBar';
 // ── Semaforo ──────────────────────────────────────────────────
 const SemaforoSignal = ({
     livello,
