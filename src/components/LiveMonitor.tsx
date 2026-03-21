@@ -8,6 +8,10 @@ import type { PartitaLive } from '../services/sheetsService';
 import { getTrendLabel, getVotoLabel, semaforoEmoji } from '../services/sheetsService';
 import TimelineBar from './TimelineBar';
 
+import { useState, useEffect } from 'react';
+import type { SnapshotGrafico } from '../services/sheetsService';
+import { getSnapshotsGrafico } from '../services/sheetsService';
+
 // ── Semaforo ──────────────────────────────────────────────────
 const SemaforoSignal = ({
     livello,
@@ -114,6 +118,65 @@ const DualWindowGrid = ({
         </div>
     );
 };
+
+// ── Grafico IP esteso ─────────────────────────────────────────
+const GraficoIP = ({ fixtureId, useHome }: { fixtureId: string; useHome: boolean }) => {
+  const [snapshots, setSnapshots] = useState<SnapshotGrafico[]>([]);
+
+  useEffect(() => {
+    getSnapshotsGrafico(fixtureId).then(setSnapshots);
+  }, [fixtureId]);
+
+  if (snapshots.length < 2) return null;
+
+  const ip10vals = snapshots.map(s => useHome ? s.ipHome10 : s.ipAway10);
+  const ip5vals  = snapshots.map(s => useHome ? s.ipHome5  : s.ipAway5);
+  const allVals  = [...ip10vals, ...ip5vals];
+  const minV     = Math.min(...allVals);
+  const maxV     = Math.max(...allVals, 0.1);
+  const range    = maxV - minV || 0.1;
+
+  const W = 300; const H = 80; const pad = 8;
+  const toX = (i: number) => pad + (i / (snapshots.length - 1)) * (W - pad * 2);
+  const toY = (v: number) => H - pad - ((v - minV) / range) * (H - pad * 2);
+  const linePath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+
+  const soglie = [
+    { v: 0.35, label: 'L1', color: 'rgba(250,204,21,0.4)' },
+    { v: 0.45, label: 'L2', color: 'rgba(251,146,60,0.4)' },
+    { v: 0.55, label: 'L3', color: 'rgba(52,211,153,0.4)'  },
+  ];
+
+  return (
+    <div className="bg-gray-800/40 rounded-2xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[8px] uppercase tracking-widest text-gray-600">Trend IP — ultimi 30'</span>
+        <div className="flex gap-3">
+          <span className="text-[9px] text-yellow-400">— IP/10'</span>
+          <span className="text-[9px] text-blue-400">— IP/5'</span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '80px' }} preserveAspectRatio="none">
+        {soglie.map((s, i) => {
+          const y = toY(s.v);
+          if (y < 0 || y > H) return null;
+          return (
+            <g key={i}>
+              <line x1={pad} y1={y} x2={W - pad} y2={y} stroke={s.color} strokeWidth="0.8" strokeDasharray="4,4" />
+              <text x={W - pad + 2} y={y + 3} fontSize="7" fill={s.color}>{s.label}</text>
+            </g>
+          );
+        })}
+        <path d={linePath(ip10vals)} fill="none" stroke="#FACC15" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={linePath(ip5vals)}  fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={toX(snapshots.length - 1)} cy={toY(ip10vals[ip10vals.length - 1])} r="3" fill="#FACC15" />
+        <circle cx={toX(snapshots.length - 1)} cy={toY(ip5vals[ip5vals.length - 1])}  r="3" fill="#60A5FA" />
+      </svg>
+    </div>
+  );
+};
+
 
 // ── LiveMonitor ───────────────────────────────────────────────
 interface LiveMonitorProps {
@@ -263,6 +326,14 @@ const LiveMonitor = ({ partita, onRemove }: LiveMonitorProps) => {
                 </div>
             )}
             
+           {/* Grafico IP */}
+            {showStats && isLive && (
+              <GraficoIP
+                fixtureId={partita.fixtureId}
+                useHome={(partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0)}
+              />
+            )}
+
             {/* Tabella confronto statistiche */}
             {showStats && partita.stats && (
                 <div className={`bg-gray-800/40 rounded-2xl p-3 space-y-2.5 ${isHT ? 'opacity-75' : ''} ${isFT ? 'opacity-90' : ''}`}>
