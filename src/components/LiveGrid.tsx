@@ -392,9 +392,15 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '10px' }}>
-        {partite.map(p => (
-          <LiveCard key={p.fixtureId} partita={p} onClick={() => setModalPartita(p)} />
-        ))}
+        {[...partite]
+          .sort((a, b) => {
+            const ta = a.kickoff ? new Date(a.kickoff).getTime() : 0;
+            const tb = b.kickoff ? new Date(b.kickoff).getTime() : 0;
+            return ta - tb;
+          })
+          .map(p => (
+            <LiveCard key={p.fixtureId} partita={p} onClick={() => setModalPartita(p)} />
+          ))}
       </div>
 
       {modalPartita && (
