@@ -254,6 +254,9 @@ const LiveCard = ({
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.homeTeam}</div>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.awayTeam}</div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{partita.league}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '1px' }}>
+            {partita.kickoff ? new Date(partita.kickoff).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#FBBF24', letterSpacing: '2px' }}>
