@@ -221,10 +221,10 @@ const LiveCard = ({
   // colori calcolati direttamente tramite le funzioni locali
 
   // Carica snapshots per il grafico
-  useEffect(() => {
-    if (!isLive) return;
+ useEffect(() => {
+    if (!isLive && !isHT) return;
     getSnapshotsGrafico(partita.fixtureId).then(setSnapshots);
-  }, [partita.fixtureId, partita.minute, isLive]);
+  }, [partita.fixtureId, partita.minute, isLive, isHT]);
 
   const kpis = [
     { label: "IP/10'",   val: livIp10.toFixed(2), color: ipColor(livIp10),        big: false },
@@ -299,7 +299,7 @@ const LiveCard = ({
       </div>
 
       {/* Grafico IP */}
-    {isLive && (
+    {(isLive || isHT) && (
         <MiniGrafico
           snapshots={snapshots}
           homeTeam={partita.homeTeam}
