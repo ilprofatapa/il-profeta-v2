@@ -204,6 +204,31 @@ export async function rimuoviPartita(fixtureId: string): Promise<boolean> {
     }
 }
 
+// ── Tipi grafico ─────────────────────────────────────────────
+
+export interface SnapshotGrafico {
+  minute: number;
+  ipHome10: number;
+  ipAway10: number;
+  ipHome5: number;
+  ipAway5: number;
+}
+
+// ── Snapshots grafico ─────────────────────────────────────────
+
+export async function getSnapshotsGrafico(fixtureId: string): Promise<SnapshotGrafico[]> {
+  try {
+    const data = await chiamaAppsScript({
+      action: 'getSnapshotsGrafico',
+      fixtureId,
+    });
+    return data as SnapshotGrafico[];
+  } catch (e) {
+    console.error('Errore getSnapshotsGrafico:', e);
+    return [];
+  }
+}
+
 // ── Prematch ─────────────────────────────────────────────────
 
 export async function getPrematch(date: string): Promise<PrematchResponse> {
