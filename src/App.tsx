@@ -47,7 +47,6 @@ export default function App() {
     league: string
   ) => {
     await aggiungiPartita(fixtureId, homeTeam, awayTeam, kickoff, league);
-    setActiveTab('live');
     await caricaDati();
   };
 
